@@ -896,11 +896,13 @@ def create_server():
             "dashboard_url": f"https://{sw_host}/neon/resources/{swml_handler_info['id']}/edit?t=addresses" if sw_host and swml_handler_info["id"] else None
         }
 
+    # Set up SWML handler on startup (runs once per worker, after app is ready)
+    @server.app.on_event("startup")
+    async def on_startup():
+        setup_swml_handler()
+
     return server
 
-
-# Set up SWML handler on module load
-setup_swml_handler()
 
 # Create server and expose app for gunicorn
 server = create_server()
