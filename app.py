@@ -13,8 +13,8 @@ from typing import Dict, List
 from signalwire_agents import AgentBase, AgentServer
 from signalwire_agents.core.function_result import SwaigFunctionResult
 from dotenv import load_dotenv
-from starlette.requests import Request
-from starlette.responses import JSONResponse
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 # Load environment variables
 load_dotenv()

@@ -1,4 +1,4 @@
-signalwire-agents==1.0.14
+signalwire-agents==1.0.15
 fastapi==0.115.12
 uvicorn==0.34.2
 gunicorn==23.0.0
