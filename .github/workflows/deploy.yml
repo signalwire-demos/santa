@@ -1,0 +1,95 @@
+# Auto-deploy to Dokku on push
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, staging, develop]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'main' && 'production' || github.ref_name == 'staging' && 'staging' || 'development' }}
+    env:
+      BASE_APP_NAME: ${{ github.event.repository.name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set variables
+        id: vars
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          case "$BRANCH" in
+            main)    APP="${BASE_APP_NAME}"; ENV="production" ;;
+            staging) APP="${BASE_APP_NAME}-staging"; ENV="staging" ;;
+            develop) APP="${BASE_APP_NAME}-dev"; ENV="development" ;;
+            *)       APP="${BASE_APP_NAME}"; ENV="production" ;;
+          esac
+          echo "app_name=$APP" >> $GITHUB_OUTPUT
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "${{ secrets.DOKKU_SSH_PRIVATE_KEY }}" > ~/.ssh/key && chmod 600 ~/.ssh/key
+          ssh-keyscan -H ${{ secrets.DOKKU_HOST }} >> ~/.ssh/known_hosts
+          echo -e "Host dokku\n  HostName ${{ secrets.DOKKU_HOST }}\n  User dokku\n  IdentityFile ~/.ssh/key" > ~/.ssh/config
+
+      - name: Create app
+        run: |
+          APP_NAME="${{ steps.vars.outputs.app_name }}"
+          ssh dokku apps:exists $APP_NAME 2>/dev/null || ssh dokku apps:create $APP_NAME
+
+      - name: Unlock app
+        run: |
+          APP_NAME="${{ steps.vars.outputs.app_name }}"
+          ssh dokku apps:unlock $APP_NAME 2>/dev/null || true
+
+      - name: Configure env
+        run: |
+          APP_NAME="${{ steps.vars.outputs.app_name }}"
+          DOMAIN="${APP_NAME}.${{ secrets.BASE_DOMAIN }}"
+          ssh dokku config:set --no-restart $APP_NAME \
+            APP_ENV="${{ steps.vars.outputs.environment }}" \
+            APP_URL="https://${DOMAIN}" \
+            SWML_BASIC_AUTH_USER="${{ secrets.SWML_BASIC_AUTH_USER }}" \
+            SWML_BASIC_AUTH_PASSWORD="${{ secrets.SWML_BASIC_AUTH_PASSWORD }}"
+
+      - name: Deploy
+        run: |
+          APP_NAME="${{ steps.vars.outputs.app_name }}"
+          git remote add dokku dokku@${{ secrets.DOKKU_HOST }}:$APP_NAME 2>/dev/null || true
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/key" git push dokku HEAD:main -f
+
+      - name: Configure domain
+        run: |
+          APP_NAME="${{ steps.vars.outputs.app_name }}"
+          DOMAIN="${APP_NAME}.${{ secrets.BASE_DOMAIN }}"
+          ssh dokku domains:clear $APP_NAME 2>/dev/null || true
+          ssh dokku domains:add $APP_NAME $DOMAIN
+
+      - name: SSL
+        run: |
+          APP_NAME="${{ steps.vars.outputs.app_name }}"
+          echo "Checking SSL status..."
+          SSL_STATUS=$(ssh dokku letsencrypt:active $APP_NAME 2>/dev/null || echo "error")
+          echo "SSL status: $SSL_STATUS"
+          if [ "$SSL_STATUS" = "true" ]; then
+            echo "SSL already active"
+          else
+            echo "Enabling SSL..."
+            ssh dokku letsencrypt:enable $APP_NAME 2>&1 || echo "SSL enable failed"
+          fi
+
+      - name: Verify
+        run: |
+          APP_NAME="${{ steps.vars.outputs.app_name }}"
+          DOMAIN="${APP_NAME}.${{ secrets.BASE_DOMAIN }}"
+          sleep 10
+          curl -sf "https://${DOMAIN}/health" && echo "HTTPS OK: https://${DOMAIN}" || curl -sf "http://${DOMAIN}/health" && echo "HTTP only: http://${DOMAIN}" || echo "Check logs"

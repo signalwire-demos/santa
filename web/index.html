@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎅 Santa's Workshop - Talk to Santa!</title>
+    <meta name="description" content="Have a magical video conversation with Santa Claus! Search for Christmas gifts, check the nice list, and experience the wonder of the North Pole. Powered by SignalWire AI.">
+    <meta name="keywords" content="Santa Claus, Christmas, gifts, video call Santa, talk to Santa, SignalWire, AI Santa, North Pole, nice list">
+    <meta name="author" content="SignalWire">
+
+    <!-- OpenGraph Meta Tags -->
+    <meta property="og:title" content="Santa's Workshop - Talk to Santa Claus!">
+    <meta property="og:description" content="Have a magical video conversation with Santa! Search for Christmas gifts, check the nice list, and experience the wonder of the North Pole.">
+    <meta property="og:image" content="https://santa.signalwire.me/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:url" content="https://santa.signalwire.me/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Santa's Workshop">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@signalwire">
+    <meta name="twitter:creator" content="@signalwire">
+    <meta name="twitter:title" content="Santa's Workshop - Talk to Santa Claus!">
+    <meta name="twitter:description" content="Have a magical video conversation with Santa! Search for Christmas gifts and check the nice list. Powered by SignalWire AI.">
+    <meta name="twitter:image" content="https://santa.signalwire.me/og-image.png">
+    <meta name="twitter:image:alt" content="Santa's Workshop - Interactive AI Santa Experience">
+
+    <!-- Additional Meta Tags -->
+    <link rel="canonical" href="https://santa.signalwire.me/">
+    <meta name="robots" content="index, follow">
+    <meta name="theme-color" content="#C41E3A">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' text-anchor='middle' alignment-baseline='middle' font-size='80'>🎅</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='50%' x='50%' text-anchor='middle' alignment-baseline='middle' font-size='80'>🎅</text></svg>">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas&family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+
+    <!-- SignalWire JavaScript SDK -->
+    <script type="text/javascript" src="https://unpkg.com/@signalwire/client@dev"></script>
+
+    <!-- Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Santa's Workshop",
+        "description": "Interactive AI-powered Santa Claus experience with real-time voice conversations and gift searching",
+        "url": "https://santa.signalwire.me/",
+        "applicationCategory": "Entertainment",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "author": {
+            "@type": "Organization",
+            "name": "SignalWire",
+            "url": "https://signalwire.com"
+        },
+        "datePublished": "2024-12-01",
+        "screenshot": "https://santa.signalwire.me/og-image.png",
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "5",
+            "bestRating": "5",
+            "ratingCount": "100"
+        }
+    }
+    </script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Animated Snow Background -->
+    <div class="snow-container" id="snowContainer"></div>
+
+    <!-- Northern Lights Effect -->
+    <div class="aurora-container">
+        <div class="aurora"></div>
+    </div>
+
+    <!-- Main Header -->
+    <header class="santa-header">
+        <div class="header-content">
+            <div class="christmas-lights"></div>
+            <a href="https://github.com/signalwire/santa" target="_blank" class="github-link" title="View on GitHub">
+                <svg class="github-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                </svg>
+                <span class="github-text">GitHub</span>
+            </a>
+
+            <h1 class="title-main">
+                <span class="sparkle">🎄</span>
+                Santa's Workshop
+                <span class="sparkle">🎄</span>
+            </h1>
+            <p class="subtitle">Talk to Santa and choose your perfect Christmas gift!</p>
+            <div class="countdown" id="christmasCountdown"></div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="workshop-container">
+        <!-- Left Panel: Santa Video & Controls -->
+        <section class="santa-panel">
+            <div class="santa-video-wrapper">
+                <div class="video-frame" id="video-container">
+                    <!-- SignalWire SDK will inject video elements here -->
+                    <div id="video-placeholder">
+                        <!-- Festive placeholder instead of video file -->
+                        <div class="santa-placeholder">
+                            <div class="santa-emoji-large">🎅</div>
+                            <h3>Santa's Workshop</h3>
+                            <p>Click "Talk to Santa!" to begin your magical journey</p>
+                            <div class="christmas-icons">
+                                <span>🎄</span>
+                                <span>🎁</span>
+                                <span>⛷️</span>
+                                <span>🎿</span>
+                                <span>🎄</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="control-panel">
+                <div class="control-group">
+                    <button id="startBtn" class="btn-santa-primary">
+                        <span class="btn-icon">🎤</span>
+                        <span class="btn-text">Talk to Santa!</span>
+                    </button>
+
+                    <!-- Settings Button -->
+                    <button class="settings-toggle" id="settingsToggle" title="Audio Settings">
+                        <svg class="settings-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v6m4.22-13.22l4.24 4.24M1.54 1.54l4.24 4.24M21 12h-6m-6 0H3m13.22 4.22l4.24 4.24M1.54 21.54l4.24-4.24"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <button id="endBtn" class="btn-santa-danger" style="display: none;">
+                    <span class="btn-icon">📞</span>
+                    <span class="btn-text">End Call</span>
+                </button>
+
+                <button id="muteBtn" class="btn-santa-secondary" style="display: none;">
+                    <span class="btn-icon">🔇</span>
+                    <span class="btn-text">Mute</span>
+                </button>
+
+                <!-- Settings Panel -->
+                <div class="settings-panel" id="settingsPanel">
+                    <h3>🎙️ Audio Settings</h3>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="echoCancellation" class="setting-checkbox">
+                            <span>Echo Cancellation</span>
+                        </label>
+                        <small>Reduces echo from speakers</small>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="noiseSuppression" class="setting-checkbox">
+                            <span>Noise Suppression</span>
+                        </label>
+                        <small>Filters background noise</small>
+                    </div>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="autoGainControl" class="setting-checkbox">
+                            <span>Auto Gain Control</span>
+                        </label>
+                        <small>Adjusts microphone volume automatically</small>
+                    </div>
+                    <button class="settings-close" id="settingsClose">Close</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Panel: Gift Gallery -->
+        <section class="gift-panel">
+            <div class="panel-header">
+                <h2 class="panel-title">
+                    <span class="icon-gift">🎁</span>
+                    Santa's Gift Selection
+                </h2>
+            </div>
+
+            <!-- Search Status -->
+            <div class="search-status" id="searchStatus" style="display: none;">
+                <div class="search-animation">
+                    <div class="sleigh-animation">🛷</div>
+                    <p>Santa is searching for the perfect gifts...</p>
+                </div>
+            </div>
+
+            <!-- Gift Cards Container -->
+            <div class="gift-gallery" id="giftGallery">
+                <!-- Welcome State -->
+                <div class="welcome-state" id="welcomeState">
+                    <div class="workshop-scene">
+                        <div class="elf elf-1">🧝</div>
+                        <div class="elf elf-2">🧝‍♀️</div>
+                        <div class="gift-box gift-1">🎁</div>
+                        <div class="gift-box gift-2">🎄</div>
+                        <div class="gift-box gift-3">🎀</div>
+                    </div>
+                    <h3>Santa's Workshop</h3>
+                    <p>Tell Santa what you'd like for Christmas!</p>
+                </div>
+
+                <!-- Dynamic Gift Cards Will Be Inserted Here -->
+            </div>
+
+            <!-- Selected Gift Showcase -->
+            <div class="gift-showcase" id="giftShowcase" style="display: none;">
+                <h3 class="showcase-title">Your Selected Gift</h3>
+                <div class="showcase-card">
+                    <img class="showcase-image" id="showcaseImage" src="" alt="">
+                    <h4 class="showcase-name" id="showcaseName"></h4>
+                    <p class="showcase-price" id="showcasePrice"></p>
+                    <div class="showcase-ribbon">
+                        <span>Santa Approved!</span>
+                    </div>
+                </div>
+                <div class="confetti" id="confetti"></div>
+            </div>
+
+            <!-- Nice List Checker -->
+            <div class="nice-list-checker" id="niceListChecker" style="display: none;">
+                <div class="nice-list-book">
+                    <h3>📖 Santa's Nice List</h3>
+                    <div class="list-result" id="listResult"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Event Log (Hidden by default) -->
+    <aside class="event-log" id="eventLog" style="display: none;">
+        <h3>🎄 Event Log</h3>
+        <div class="log-content" id="logContent"></div>
+    </aside>
+
+    <!-- Audio elements can be added here when sound files are available -->
+
+    <!-- Custom JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>

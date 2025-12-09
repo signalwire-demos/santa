@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignalWire Simple Client</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .status.connecting {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status.connected {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.disconnected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+        }
+
+        .video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .video-wrapper {
+            position: relative;
+            background: #1f2937;
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 16/9;
+        }
+
+        .video-wrapper video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+        
+        /* Style SignalWire's injected video elements */
+        #remoteVideoWrapper video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: contain !important;
+            background: #000 !important;
+        }
+        
+        /* Ensure SignalWire's wrapper div fills the container */
+        #remoteVideoWrapper > div {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .video-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .members-list {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 10px;
+        }
+
+        .members-list h3 {
+            margin-bottom: 10px;
+            color: #374151;
+        }
+
+        .member {
+            padding: 8px;
+            background: white;
+            margin: 5px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .member-status {
+            display: flex;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .audio-on { background: #10b981; }
+        .audio-off { background: #ef4444; }
+        .video-on { background: #10b981; }
+        .video-off { background: #ef4444; }
+        
+        .events-viewer {
+            margin-top: 20px;
+            padding: 15px;
+            background: #1f2937;
+            border-radius: 10px;
+            color: #f3f4f6;
+        }
+        
+        .events-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #374151;
+        }
+        
+        .events-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #10b981;
+        }
+        
+        .events-clear {
+            background: #374151;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        .events-clear:hover {
+            background: #4b5563;
+        }
+        
+        .events-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #111827;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        
+        .event-entry {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #1f2937;
+            border-radius: 4px;
+            border-left: 3px solid #374151;
+            font-size: 12px;
+        }
+        
+        .event-entry.user-event {
+            border-left-color: #10b981;
+            background: #064e3b;
+        }
+        
+        .event-time {
+            color: #9ca3af;
+            font-size: 10px;
+            margin-bottom: 4px;
+        }
+        
+        .event-data {
+            color: #60a5fa;
+            font-family: monospace;
+            font-size: 11px;
+            margin-top: 4px;
+            padding: 4px;
+            background: #0f172a;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+
+        @media (max-width: 768px) {
+            .video-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SignalWire Video Room</h1>
+        
+        <div id="status" class="status disconnected">
+            Disconnected
+        </div>
+
+        <div class="controls">
+            <button id="connectBtn" class="btn-primary">Connect</button>
+            <button id="disconnectBtn" class="btn-danger" disabled>Disconnect</button>
+            <button id="toggleAudioBtn" class="btn-secondary" disabled>Mute Audio</button>
+            <button id="toggleVideoBtn" class="btn-secondary" disabled>Disable Video</button>
+        </div>
+
+        <div class="video-container">
+            <div class="video-wrapper">
+                <div class="video-label">Local Video</div>
+                <video id="localVideo" autoplay muted playsinline></video>
+            </div>
+            <div class="video-wrapper" id="remoteVideoWrapper">
+                <div class="video-label">Remote Video</div>
+                <!-- SignalWire will inject video element here -->
+            </div>
+        </div>
+
+        <div class="members-list" id="membersList" style="display: none;">
+            <h3>Room Members</h3>
+            <div id="membersContainer"></div>
+        </div>
+        
+        <div class="events-viewer">
+            <div class="events-header">
+                <span class="events-title">📡 User Events</span>
+                <button class="events-clear" onclick="clearEvents()">Clear</button>
+            </div>
+            <div class="events-container" id="eventsContainer">
+                <div style="color: #6b7280; text-align: center; padding: 20px;">
+                    No events received yet...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="https://cdn.signalwire.com/@signalwire/js"></script>
+    <script type="text/javascript">
+        // Configuration
+        const DESTINATION = '/public/holy-guacamole';
+        const STATIC_TOKEN = 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIiwidHlwIjoiU0FUIiwiY2giOiJwdWMuc2lnbmFsd2lyZS5jb20ifQ..D_TMjgEuu4yuF6fX.t47i-K3zYMSIU3IdFOXmC_8JtIVlDXkanuID9kEq1uM_cmJwnNtEHIG-LCYLMB5l2MfL5veedK2cejbD_o_dj-pSZgYqh4Qn9e7Lmv1BQBnqwCLsc7nZ1U3kg0c6TYZvFWOR3rgrUAlBcP4G_VSl7IjgRorh2dL4BoCTsMSvuLoKyBzvRs2JbZGmJ9UjI0JYzXdlVf1h24Pa3MP0SoPwyQ9Z7wGmxIXdHJ_ovdVspkCO60oFlmIMhn_WbW2jGq-n8TkclEkM_cLcz1OjUDhai_xMYeqBJlfJNz2OoD8UIg1e60d0fc2NP84wU1_uYgZ4CCe9lIuVmzpsQkun-pfMDMgUcR9Uf4YpVEZDToecvP7tzgSgwvTNR3o9FBEHhDienhuYiHE35uWs9ktoElMxYR28BdF7H3YwFuzg2TvHtzUhi80IORVPLPWtH4goagDFbel_zEWc_nn8xcahpbrC4sKlTIJ1I9iPfDsCOAps30uVlHFRq7LElGQw_15QqU2S13GDneBv9uAQGRVxnKD5h_moogKfuofRp3EcCxTe.65H02il38BhCkGPkDVM8xA';
+
+        // State
+        let client = null;
+        let roomSession = null;
+        let audioEnabled = true;
+        let videoEnabled = true;
+
+        // DOM Elements
+        const statusEl = document.getElementById('status');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const toggleAudioBtn = document.getElementById('toggleAudioBtn');
+        const toggleVideoBtn = document.getElementById('toggleVideoBtn');
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const membersList = document.getElementById('membersList');
+        const membersContainer = document.getElementById('membersContainer');
+        const eventsContainer = document.getElementById('eventsContainer');
+
+        // Update UI Status
+        function updateStatus(status, message) {
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = message;
+        }
+
+        // Event logging functions
+        function logEvent(message, data = null, isUserEvent = false) {
+            // Clear the placeholder if it's still there
+            if (eventsContainer.innerHTML.includes('No events received yet')) {
+                eventsContainer.innerHTML = '';
+            }
+            
+            const entry = document.createElement('div');
+            entry.className = isUserEvent ? 'event-entry user-event' : 'event-entry';
+            
+            const time = new Date().toLocaleTimeString();
+            
+            let dataStr = '';
+            if (data) {
+                try {
+                    // Handle circular references
+                    const seen = new WeakSet();
+                    dataStr = JSON.stringify(data, (key, value) => {
+                        if (typeof value === 'object' && value !== null) {
+                            if (seen.has(value)) {
+                                return '[Circular Reference]';
+                            }
+                            seen.add(value);
+                        }
+                        return value;
+                    }, 2);
+                } catch (e) {
+                    dataStr = 'Error serializing data: ' + e.message;
+                }
+            }
+            
+            entry.innerHTML = `
+                <div class="event-time">${time}</div>
+                <div>${isUserEvent ? '🟢 USER EVENT: ' : ''}${message}</div>
+                ${dataStr ? `<div class="event-data">${dataStr}</div>` : ''}
+            `;
+            
+            eventsContainer.appendChild(entry);
+            eventsContainer.scrollTop = eventsContainer.scrollHeight;
+        }
+        
+        function clearEvents() {
+            eventsContainer.innerHTML = `
+                <div style="color: #6b7280; text-align: center; padding: 20px;">
+                    No events received yet...
+                </div>
+            `;
+        }
+        
+        // Handle user events
+        function handleUserEvent(eventData) {
+            console.log('📡 User Event Received:', eventData);
+            logEvent(eventData.type || 'Unknown Event', eventData, true);
+            
+            // You can add specific event handling here based on eventData.type
+            // For example:
+            if (eventData.type === 'order_started') {
+                console.log('Order started!');
+            } else if (eventData.type === 'item_added') {
+                console.log('Item added:', eventData.item);
+            }
+            // Add more event types as needed
+        }
+
+        // Update Members List
+        function updateMembersList(members) {
+            if (!members || members.length === 0) {
+                membersList.style.display = 'none';
+                return;
+            }
+
+            membersList.style.display = 'block';
+            membersContainer.innerHTML = '';
+
+            members.forEach(member => {
+                const memberDiv = document.createElement('div');
+                memberDiv.className = 'member';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = member.name || member.id || 'Unknown';
+                
+                const statusDiv = document.createElement('div');
+                statusDiv.className = 'member-status';
+                
+                const audioIndicator = document.createElement('span');
+                audioIndicator.className = `status-indicator ${member.audio_muted ? 'audio-off' : 'audio-on'}`;
+                audioIndicator.title = member.audio_muted ? 'Audio Off' : 'Audio On';
+                
+                const videoIndicator = document.createElement('span');
+                videoIndicator.className = `status-indicator ${member.video_muted ? 'video-off' : 'video-on'}`;
+                videoIndicator.title = member.video_muted ? 'Video Off' : 'Video On';
+                
+                statusDiv.appendChild(audioIndicator);
+                statusDiv.appendChild(videoIndicator);
+                memberDiv.appendChild(nameSpan);
+                memberDiv.appendChild(statusDiv);
+                membersContainer.appendChild(memberDiv);
+            });
+        }
+
+        // Connect to Room
+        async function connect() {
+            try {
+                updateStatus('connecting', 'Connecting...');
+                connectBtn.disabled = true;
+
+                // Check what's available on SignalWire
+                console.log('SignalWire object:', window.SignalWire);
+                console.log('SignalWire properties:', Object.keys(window.SignalWire));
+                console.log('SignalWire.SignalWire type:', typeof window.SignalWire.SignalWire);
+                console.log('SignalWire.Fabric type:', typeof window.SignalWire.Fabric);
+                
+                // The CDN version exports SignalWire.SignalWire as the constructor function
+                if (!window.SignalWire || typeof window.SignalWire.SignalWire !== 'function') {
+                    throw new Error('SignalWire.SignalWire constructor not found. Check that the SDK loaded properly.');
+                }
+                
+                // Create client using SignalWire.SignalWire constructor
+                client = await window.SignalWire.SignalWire({
+                    token: STATIC_TOKEN,
+                    logLevel: 'debug'
+                });
+
+                console.log('Client created:', client);
+                
+                // Setup client-level user event handler
+                client.on('user_event', (params) => {
+                    console.log('🌮 CLIENT EVENT: user_event', params);
+                    handleUserEvent(params);
+                });
+
+                // Get the remote video container
+                const remoteVideoContainer = document.getElementById('remoteVideoWrapper');
+                
+                // Dial into the room with video negotiation
+                roomSession = await client.dial({
+                    to: DESTINATION,
+                    rootElement: remoteVideoContainer,
+                    audio: true,
+                    video: true,
+                    negotiateVideo: true,  // Important for video negotiation
+                    userVariables: {
+                        userName: `User-${Math.floor(Math.random() * 1000)}`,
+                        interface: 'simple-client',
+                        timestamp: new Date().toISOString()
+                    }
+                });
+
+                console.log('Room session created:', roomSession);
+
+                // Setup event handlers
+                roomSession.on('room.started', (params) => {
+                    console.log('Room started:', params);
+                });
+
+                roomSession.on('call.joined', async (params) => {
+                    console.log('Call joined:', params);
+                    updateStatus('connected', `Connected to: ${DESTINATION}`);
+                    
+                    disconnectBtn.disabled = false;
+                    toggleAudioBtn.disabled = false;
+                    toggleVideoBtn.disabled = false;
+                    
+                    // Get local stream and display it
+                    if (roomSession.localStream) {
+                        localVideo.srcObject = roomSession.localStream;
+                        console.log('Local stream set:', roomSession.localStream);
+                        
+                        // Log video tracks
+                        const videoTracks = roomSession.localStream.getVideoTracks();
+                        videoTracks.forEach(track => {
+                            console.log('Local video track:', track.label, track.enabled);
+                        });
+                    }
+                    
+                    // Check if SignalWire added video elements to the container
+                    setTimeout(() => {
+                        const remoteVideoContainer = document.getElementById('remoteVideoWrapper');
+                        const videos = remoteVideoContainer.querySelectorAll('video');
+                        console.log('Video elements in container:', videos.length);
+                        videos.forEach((video, index) => {
+                            console.log(`Video ${index}:`, video, 'Has stream:', !!video.srcObject);
+                            if (video.srcObject) {
+                                console.log('Remote stream tracks:', video.srcObject.getTracks());
+                            }
+                        });
+                    }, 1000);
+                });
+
+                roomSession.on('call.state', (params) => {
+                    console.log('Call state:', params);
+                    if (params && (params.state === 'ended' || params.state === 'hangup' || params.state === 'disconnected')) {
+                        updateStatus('disconnected', 'Call ended');
+                        handleDisconnect();
+                    }
+                });
+
+                roomSession.on('stream.started', (params) => {
+                    console.log('Stream started:', params);
+                    // SignalWire should handle this automatically with rootElement
+                });
+
+                roomSession.on('stream.ended', (params) => {
+                    console.log('Stream ended:', params);
+                });
+
+                roomSession.on('room.left', (params) => {
+                    console.log('Room left:', params);
+                    updateStatus('disconnected', 'Left room');
+                    handleDisconnect();
+                });
+                
+                // Additional events for remote hangup detection
+                roomSession.on('call.ended', (params) => {
+                    console.log('Call ended:', params);
+                    handleDisconnect();
+                });
+                
+                roomSession.on('room.ended', (params) => {
+                    console.log('Room ended:', params);
+                    handleDisconnect();
+                });
+                
+                roomSession.on('destroy', (params) => {
+                    console.log('Session destroyed:', params);
+                    handleDisconnect();
+                });
+                
+                roomSession.on('disconnected', (params) => {
+                    console.log('Disconnected:', params);
+                    handleDisconnect();
+                });
+
+                roomSession.on('member.joined', (params) => {
+                    console.log('Member joined:', params);
+                    updateMembersList([params.member]);
+                });
+
+                roomSession.on('member.left', (params) => {
+                    console.log('Member left:', params);
+                });
+
+                roomSession.on('member.updated', (params) => {
+                    console.log('Member updated:', params);
+                });
+                
+                // Room-level user event handler
+                roomSession.on('user_event', (params) => {
+                    console.log('🌶️ ROOM EVENT: user_event', params);
+                    handleUserEvent(params);
+                });
+
+                // Start the call
+                await roomSession.start();
+                console.log('Call started');
+
+            } catch (error) {
+                console.error('Connection error:', error);
+                updateStatus('disconnected', `Error: ${error.message}`);
+                resetUI();
+            }
+        }
+
+        // Handle disconnection and cleanup
+        function handleDisconnect() {
+            // Clean up local video
+            if (localVideo.srcObject) {
+                localVideo.srcObject.getTracks().forEach(track => track.stop());
+                localVideo.srcObject = null;
+            }
+            
+            // Clear any video elements SignalWire may have added and restore label
+            const remoteVideoContainer = document.getElementById('remoteVideoWrapper');
+            if (remoteVideoContainer) {
+                const videos = remoteVideoContainer.querySelectorAll('video');
+                videos.forEach(video => {
+                    if (video.srcObject) {
+                        video.srcObject.getTracks().forEach(track => track.stop());
+                        video.srcObject = null;
+                    }
+                });
+                // Restore the original content with the label
+                remoteVideoContainer.innerHTML = `
+                    <div class="video-label">Remote Video</div>
+                    <!-- SignalWire will inject video element here -->
+                `;
+            }
+            
+            // Clean up client and session
+            if (client) {
+                try {
+                    client.disconnect();
+                } catch (e) {
+                    console.log('Client disconnect error:', e);
+                }
+                client = null;
+            }
+            roomSession = null;
+            
+            updateStatus('disconnected', 'Disconnected');
+            resetUI();
+            logEvent('Session disconnected', null);
+        }
+
+        // Disconnect from Call (user initiated)
+        async function disconnect() {
+            try {
+                if (roomSession) {
+                    await roomSession.hangup();
+                }
+                handleDisconnect();
+            } catch (error) {
+                console.error('Disconnect error:', error);
+                handleDisconnect(); // Force cleanup even if hangup fails
+            }
+        }
+
+        // Toggle Audio
+        async function toggleAudio() {
+            try {
+                if (roomSession && roomSession.localStream) {
+                    const audioTracks = roomSession.localStream.getAudioTracks();
+                    
+                    audioTracks.forEach(track => {
+                        track.enabled = !track.enabled;
+                        audioEnabled = track.enabled;
+                    });
+                    
+                    if (audioEnabled) {
+                        toggleAudioBtn.textContent = 'Mute Audio';
+                        toggleAudioBtn.className = 'btn-secondary';
+                    } else {
+                        toggleAudioBtn.textContent = 'Unmute Audio';
+                        toggleAudioBtn.className = 'btn-success';
+                    }
+                    console.log('Audio toggled:', audioEnabled);
+                }
+            } catch (error) {
+                console.error('Audio toggle error:', error);
+            }
+        }
+
+        // Toggle Video
+        async function toggleVideo() {
+            try {
+                if (roomSession && roomSession.localStream) {
+                    const videoTracks = roomSession.localStream.getVideoTracks();
+                    
+                    videoTracks.forEach(track => {
+                        track.enabled = !track.enabled;
+                        videoEnabled = track.enabled;
+                    });
+                    
+                    if (videoEnabled) {
+                        toggleVideoBtn.textContent = 'Disable Video';
+                        toggleVideoBtn.className = 'btn-secondary';
+                    } else {
+                        toggleVideoBtn.textContent = 'Enable Video';
+                        toggleVideoBtn.className = 'btn-success';
+                    }
+                    console.log('Video toggled:', videoEnabled);
+                }
+            } catch (error) {
+                console.error('Video toggle error:', error);
+            }
+        }
+
+        // Reset UI
+        function resetUI() {
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            toggleAudioBtn.disabled = true;
+            toggleVideoBtn.disabled = true;
+            toggleAudioBtn.textContent = 'Mute Audio';
+            toggleVideoBtn.textContent = 'Disable Video';
+            toggleAudioBtn.className = 'btn-secondary';
+            toggleVideoBtn.className = 'btn-secondary';
+            membersList.style.display = 'none';
+            audioEnabled = true;
+            videoEnabled = true;
+        }
+
+        // Event Listeners - wait for DOM to be ready
+        window.addEventListener('DOMContentLoaded', () => {
+            connectBtn.addEventListener('click', connect);
+            disconnectBtn.addEventListener('click', disconnect);
+            toggleAudioBtn.addEventListener('click', toggleAudio);
+            toggleVideoBtn.addEventListener('click', toggleVideo);
+        });
+
+        // Handle page unload
+        window.addEventListener('beforeunload', () => {
+            if (roomSession) {
+                disconnect();
+            }
+        });
+    </script>
+</body>
+</html>

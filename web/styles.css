@@ -1,0 +1,1096 @@
+/* Santa's Gift Workshop - Festive Styles */
+
+:root {
+    /* Christmas Color Palette */
+    --christmas-red: #C41E3A;
+    --christmas-green: #165B33;
+    --christmas-gold: #FFD700;
+    --christmas-white: #FFFAFA;
+    --christmas-blue: #1E3A5F;
+    --santa-red: #DC143C;
+    --holly-green: #0F7938;
+    --snow-white: #F0F8FF;
+    --warm-glow: #FFA500;
+    --midnight-blue: #0C1445;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Fredoka', cursive;
+    background: linear-gradient(180deg, var(--midnight-blue) 0%, var(--christmas-blue) 50%, #2A5490 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Animated Snow Effect */
+.snow-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.snowflake {
+    position: absolute;
+    top: -10px;
+    color: white;
+    user-select: none;
+    cursor: default;
+    animation-name: snowfall;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+}
+
+@keyframes snowfall {
+    0% {
+        transform: translateY(-100px) rotate(0deg);
+        opacity: 1;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(calc(100vh + 100px)) rotate(360deg);
+        opacity: 0.8;
+    }
+}
+
+/* Snow accumulation at bottom */
+.snow-accumulation {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    background: linear-gradient(to top,
+        rgba(255, 255, 255, 0.95) 0%,
+        rgba(255, 255, 255, 0.8) 30%,
+        rgba(255, 255, 255, 0.4) 70%,
+        transparent 100%);
+    z-index: 2;
+    pointer-events: none;
+    transition: height 0.5s ease-out;
+    box-shadow: 0 -10px 30px rgba(255, 255, 255, 0.5);
+}
+
+.snow-accumulation::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 40"><path d="M0,20 Q100,5 200,20 T400,20 T600,20 T800,20 T1000,20 T1200,20 L1200,40 L0,40 Z" fill="white" opacity="0.8"/></svg>') repeat-x;
+    background-size: 200px 40px;
+    animation: snowDrift 10s linear infinite;
+}
+
+@keyframes snowDrift {
+    0% {
+        background-position-x: 0;
+    }
+    100% {
+        background-position-x: 200px;
+    }
+}
+
+/* Aurora Borealis Effect */
+.aurora-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 300px;
+    overflow: hidden;
+    z-index: 0;
+}
+
+.aurora {
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(0, 255, 128, 0.1),
+        rgba(0, 128, 255, 0.1),
+        rgba(128, 0, 255, 0.1),
+        transparent
+    );
+    animation: aurora 15s ease-in-out infinite;
+}
+
+@keyframes aurora {
+    0%, 100% { transform: translateX(-50%) skewX(-15deg); opacity: 0.5; }
+    50% { transform: translateX(0%) skewX(15deg); opacity: 0.8; }
+}
+
+/* Header */
+.santa-header {
+    background: linear-gradient(135deg, var(--christmas-red), var(--santa-red));
+    padding: 20px;
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border-bottom: 5px solid var(--christmas-gold);
+}
+
+/* GitHub Link */
+.github-link {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    text-decoration: none;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px 16px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    z-index: 20;
+}
+
+.github-link:hover {
+    background: rgba(0, 0, 0, 0.5);
+    transform: translateY(-50%) translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.github-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.github-text {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Control Group */
+.control-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Settings Button */
+.settings-toggle {
+    background: linear-gradient(135deg, #4a7c59, #2d5436);
+    border: 2px solid var(--christmas-gold);
+    color: white;
+    padding: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.settings-toggle:hover {
+    background: linear-gradient(135deg, #2d5436, #1a3220);
+    transform: rotate(45deg);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.settings-icon {
+    width: 24px;
+    height: 24px;
+}
+
+/* Settings Panel */
+.settings-panel {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 20px;
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    min-width: 280px;
+    display: none;
+    animation: slideIn 0.3s ease-out;
+}
+
+.settings-panel.show {
+    display: block;
+}
+
+.settings-panel h3 {
+    margin: 0 0 20px 0;
+    color: var(--christmas-green);
+    font-size: 1.2rem;
+    border-bottom: 2px solid var(--christmas-gold);
+    padding-bottom: 10px;
+}
+
+.setting-item {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.setting-item label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+}
+
+.setting-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.setting-item small {
+    display: block;
+    margin-top: 5px;
+    margin-left: 28px;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.settings-close {
+    width: 100%;
+    margin-top: 15px;
+    padding: 10px;
+    background: var(--christmas-red);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.settings-close:hover {
+    background: var(--santa-red);
+}
+
+.christmas-lights {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 20px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.3), transparent);
+    padding: 0 10px;
+}
+
+.light-bulb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 10px currentColor, inset 0 0 3px rgba(255,255,255,0.5);
+    animation: twinkle 2s ease-in-out infinite;
+}
+
+.light-bulb::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 4px;
+    background: #444;
+    border-radius: 2px 2px 0 0;
+}
+
+.light-bulb::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    height: 8px;
+    background: #333;
+    z-index: -1;
+}
+
+.light-red {
+    color: #ff0000;
+    background: radial-gradient(circle, #ff6666, #ff0000);
+    animation-delay: 0s;
+}
+
+.light-green {
+    color: #00ff00;
+    background: radial-gradient(circle, #66ff66, #00ff00);
+    animation-delay: 0.5s;
+}
+
+.light-yellow {
+    color: #ffff00;
+    background: radial-gradient(circle, #ffff66, #ffff00);
+    animation-delay: 1s;
+}
+
+.light-blue {
+    color: #0099ff;
+    background: radial-gradient(circle, #66ccff, #0099ff);
+    animation-delay: 1.5s;
+}
+
+.light-purple {
+    color: #ff00ff;
+    background: radial-gradient(circle, #ff66ff, #ff00ff);
+    animation-delay: 0.3s;
+}
+
+.light-orange {
+    color: #ff8800;
+    background: radial-gradient(circle, #ffaa44, #ff8800);
+    animation-delay: 0.8s;
+}
+
+@keyframes twinkle {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    25% {
+        opacity: 0.3;
+        transform: scale(0.9);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+    75% {
+        opacity: 0.4;
+        transform: scale(0.95);
+    }
+}
+
+.title-main {
+    font-family: 'Mountains of Christmas', cursive;
+    font-size: 3.5rem;
+    color: var(--christmas-white);
+    text-align: center;
+    text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.5);
+    margin-bottom: 10px;
+}
+
+.sparkle {
+    display: inline-block;
+    animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.2) rotate(180deg); }
+}
+
+.subtitle {
+    text-align: center;
+    color: var(--christmas-white);
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+}
+
+.countdown {
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--christmas-gold);
+    font-weight: 600;
+}
+
+/* Main Layout */
+.workshop-container {
+    max-width: 1400px;
+    margin: 30px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 30px;
+    position: relative;
+    z-index: 5;
+}
+
+/* Santa Panel */
+.santa-panel {
+    background: linear-gradient(135deg, var(--snow-white), #E8F5E8);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    border: 3px solid var(--christmas-gold);
+}
+
+.santa-video-wrapper {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.video-frame {
+    position: relative;
+    background: var(--christmas-green);
+    border-radius: 15px;
+    padding: 10px;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+#video-container {
+    width: 100%;
+    aspect-ratio: 1936 / 1080;  /* Exact aspect ratio for Santa videos */
+    max-height: 500px;
+    position: relative;
+    background: linear-gradient(135deg, #0C1445 0%, #1E3A5F 50%, #2A5490 100%);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+/* Video placeholder - festive design */
+#video-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.santa-placeholder {
+    animation: gentleFloat 4s ease-in-out infinite;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 100%;
+}
+
+.santa-emoji-large {
+    font-size: 70px;
+    animation: pulse 2s ease-in-out infinite;
+    line-height: 1;
+    margin-top: -10px;
+}
+
+.sparkles {
+    font-size: 40px;
+    margin: 10px 0;
+    animation: twinkle 1s ease-in-out infinite;
+}
+
+.santa-placeholder h3 {
+    font-family: 'Mountains of Christmas', cursive;
+    font-size: 2.2rem;
+    color: var(--christmas-gold);
+    margin: 5px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.santa-placeholder p {
+    color: var(--snow-white);
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.christmas-icons {
+    display: flex;
+    gap: 15px;
+    font-size: 30px;
+}
+
+.christmas-icons span {
+    animation: float 3s ease-in-out infinite;
+}
+
+.christmas-icons span:nth-child(1) { animation-delay: 0s; }
+.christmas-icons span:nth-child(2) { animation-delay: 0.5s; }
+.christmas-icons span:nth-child(3) { animation-delay: 1s; }
+.christmas-icons span:nth-child(4) { animation-delay: 1.5s; }
+.christmas-icons span:nth-child(5) { animation-delay: 2s; }
+
+@keyframes gentleFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+/* Style any video element SignalWire injects */
+#video-container video,
+#video-container > div > video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;  /* Changed from contain to cover to fill the frame */
+    object-position: center top !important;  /* Position video to show top (Santa's head) */
+    border-radius: 10px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+}
+
+/* SignalWire wrapper divs */
+#video-container > div {
+    width: 100% !important;
+    height: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+/* Hide local video if present */
+#video-container video[id*="local"],
+#video-container video.localVideo {
+    display: none;
+}
+
+/* Control Panel */
+.control-panel {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 20px 0;
+    position: relative;
+    flex-direction: column;
+    align-items: center;
+}
+
+.btn-santa-primary, .btn-santa-secondary, .btn-santa-danger {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 30px;
+    font-family: 'Fredoka', cursive;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-santa-primary {
+    background: linear-gradient(135deg, var(--christmas-green), var(--holly-green));
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 128, 0, 0.3);
+}
+
+.btn-santa-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 128, 0, 0.4);
+}
+
+.btn-santa-danger {
+    background: linear-gradient(135deg, var(--christmas-red), var(--santa-red));
+    color: white;
+}
+
+.btn-santa-secondary {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    color: white;
+}
+
+.btn-icon {
+    font-size: 1.2rem;
+}
+
+/* Status Display */
+.status-display {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--christmas-gold);
+    color: var(--christmas-green);
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* Gift Panel */
+.gift-panel {
+    background: linear-gradient(135deg, var(--snow-white), #FFF5F5);
+    border-radius: 20px;
+    padding: 25px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    border: 3px solid var(--christmas-gold);
+}
+
+.panel-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.panel-title {
+    font-family: 'Mountains of Christmas', cursive;
+    font-size: 2.5rem;
+    color: var(--christmas-red);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.icon-gift {
+    font-size: 2rem;
+}
+
+/* Welcome State */
+.welcome-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.workshop-scene {
+    position: relative;
+    height: 150px;
+    margin-bottom: 30px;
+}
+
+.elf, .gift-box {
+    position: absolute;
+    font-size: 2.5rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+.elf-1 {
+    left: 20%;
+    animation-delay: 0s;
+}
+
+.elf-2 {
+    right: 20%;
+    animation-delay: 1.5s;
+}
+
+.gift-1 {
+    left: 35%;
+    bottom: 20px;
+    animation-delay: 0.5s;
+}
+
+.gift-2 {
+    right: 35%;
+    bottom: 20px;
+    animation-delay: 1s;
+}
+
+.gift-3 {
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 40px;
+    animation-delay: 2s;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+}
+
+.welcome-state h3 {
+    font-family: 'Mountains of Christmas', cursive;
+    font-size: 2rem;
+    color: var(--christmas-green);
+    margin-bottom: 10px;
+}
+
+.welcome-state p {
+    color: var(--christmas-red);
+    font-size: 1.1rem;
+}
+
+/* Search Animation */
+.search-status {
+    text-align: center;
+    padding: 40px;
+}
+
+.search-animation {
+    position: relative;
+}
+
+.sleigh-animation {
+    font-size: 3rem;
+    display: inline-block;
+    animation: sleighFly 2s ease-in-out infinite;
+}
+
+@keyframes sleighFly {
+    0%, 100% { transform: translateX(-20px) translateY(0); }
+    50% { transform: translateX(20px) translateY(-10px); }
+}
+
+.search-status p {
+    margin-top: 20px;
+    color: var(--christmas-green);
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+/* Gift Gallery */
+.gift-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+    min-height: 300px;
+    padding: 10px;
+    width: 100%;
+}
+
+/* Gift Cards */
+.gift-card {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    border: 3px solid var(--christmas-gold);
+    position: relative;
+    animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.gift-card:hover {
+    transform: translateY(-10px) scale(1.05);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.gift-card-image {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+    flex-shrink: 0;
+}
+
+.gift-card-body {
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.gift-option-number {
+    display: inline-block;
+    background: var(--christmas-red);
+    color: white;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+    border-radius: 50%;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.gift-card-title {
+    font-size: 1.1rem;
+    color: #0a4d2c;  /* Darker green for better readability */
+    margin-bottom: 8px;
+    font-weight: 600;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+.gift-card-price {
+    font-size: 1.4rem;
+    color: #C41E3A;  /* Solid red for better contrast */
+    font-weight: bold;
+    margin-bottom: 10px;
+    text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+.gift-card-description {
+    font-size: 0.95rem;
+    color: #333;  /* Much darker for better readability */
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.gift-card-ribbon {
+    position: absolute;
+    top: 10px;
+    right: -35px;
+    background: var(--christmas-red);
+    color: white;
+    padding: 5px 40px;
+    transform: rotate(45deg);
+    font-size: 0.8rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Gift Showcase */
+.gift-showcase {
+    text-align: center;
+    padding: 30px;
+    background: linear-gradient(135deg, #FFF9E6, #FFF);
+    border-radius: 15px;
+    margin-top: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.showcase-title {
+    font-family: 'Mountains of Christmas', cursive;
+    font-size: 2rem;
+    color: var(--christmas-green);
+    margin-bottom: 20px;
+}
+
+.showcase-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    max-width: 400px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.showcase-image {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.showcase-name {
+    font-size: 1.5rem;
+    color: var(--christmas-green);
+    margin-bottom: 10px;
+}
+
+.showcase-price {
+    font-size: 1.8rem;
+    color: var(--christmas-red);
+    font-weight: bold;
+}
+
+.showcase-ribbon {
+    position: absolute;
+    top: -10px;
+    right: 20px;
+    background: var(--christmas-gold);
+    color: var(--christmas-green);
+    padding: 10px 20px;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.showcase-ribbon::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background: inherit;
+    clip-path: polygon(0 0, 50% 100%, 100% 0);
+}
+
+/* Confetti Animation */
+.confetti {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.confetti-piece {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--christmas-red);
+    animation: confettiFall 3s ease-out;
+}
+
+@keyframes confettiFall {
+    0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+/* Nice List Checker */
+.nice-list-book {
+    background: linear-gradient(135deg, #8B4513, #A0522D);
+    border-radius: 10px;
+    padding: 30px;
+    color: white;
+    text-align: center;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.nice-list-book h3 {
+    font-family: 'Mountains of Christmas', cursive;
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+.list-result {
+    font-size: 1.3rem;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    animation: glow 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px var(--christmas-gold); }
+    50% { box-shadow: 0 0 40px var(--christmas-gold); }
+}
+
+/* Event Log */
+.event-log {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    max-height: 400px;
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+}
+
+.event-log h3 {
+    color: var(--christmas-green);
+    margin-bottom: 10px;
+}
+
+.log-content {
+    max-height: 350px;
+    overflow-y: auto;
+    font-size: 0.85rem;
+}
+
+.log-entry {
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 5px;
+}
+
+.log-timestamp {
+    color: #999;
+    font-size: 0.75rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .workshop-container {
+        grid-template-columns: 1fr;
+    }
+
+    .github-link .github-text {
+        display: none;
+    }
+
+    .settings-panel {
+        left: 10px;
+        right: 10px;
+        transform: translateX(0);
+        min-width: auto;
+    }
+
+    .title-main {
+        font-size: 2.5rem;
+    }
+
+    .panel-title {
+        font-size: 1.8rem;
+    }
+
+    .gift-gallery {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Loading Animation */
+.loading {
+    display: inline-block;
+    width: 50px;
+    height: 50px;
+    border: 5px solid var(--christmas-green);
+    border-radius: 50%;
+    border-top-color: var(--christmas-red);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Accessibility */
+:focus {
+    outline: 3px solid var(--christmas-gold);
+    outline-offset: 2px;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
