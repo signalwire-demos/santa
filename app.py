@@ -757,25 +757,22 @@ def setup_swml_handler():
         swml_handler_info["address_id"] = existing["address_id"]
         swml_handler_info["address"] = existing["address"]
 
-        # Check if the URL needs updating
-        if existing.get("url") != swml_url:
-            try:
-                update_resp = requests.put(
-                    f"https://{sw_host}/api/fabric/resources/external_swml_handlers/{existing['id']}",
-                    json={
-                        "primary_request_url": swml_url,
-                        "primary_request_method": "POST"
-                    },
-                    auth=auth,
-                    headers=headers
-                )
-                update_resp.raise_for_status()
-                print(f"Updated SWML handler: {existing['name']}")
-                print(f"New URL: {swml_url}")
-            except Exception as e:
-                print(f"Failed to update handler URL: {e}")
-        else:
-            print(f"Using existing SWML handler: {existing['name']}")
+        # Always update the URL to ensure credentials are current
+        # (API may return masked URLs making comparison unreliable)
+        try:
+            update_resp = requests.put(
+                f"https://{sw_host}/api/fabric/resources/external_swml_handlers/{existing['id']}",
+                json={
+                    "primary_request_url": swml_url,
+                    "primary_request_method": "POST"
+                },
+                auth=auth,
+                headers=headers
+            )
+            update_resp.raise_for_status()
+            print(f"Updated SWML handler: {existing['name']}")
+        except Exception as e:
+            print(f"Failed to update handler URL: {e}")
 
         print(f"Call address: {existing['address']}")
     else:
