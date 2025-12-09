@@ -1,8 +1,9 @@
 // Santa's Gift Workshop - Interactive Frontend
 // Handles SignalWire connection and dynamic gift display
 
-const DESTINATION = '/public/santa';
-const STATIC_TOKEN = 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIiwidHlwIjoiU0FUIiwiY2giOiJwdWMuc2lnbmFsd2lyZS5jb20ifQ..qnKzQ15wDIZ5G5KV.0C3023-feOsNg9DT4Sv56AGDJ0lGzzhqE2D4N3WRbU0bGPcsqk9fYpgG6txUrhAd7x0cs2irf7GUnFGfYlos2cwX04YRbwYxqGUBckKAS8NmGy-K0eCVjfAUTkCEbriQ791tzkk6XX4FQD_pTvCY7LM4CjNdlwLfB4xn3nkIo2Sw7SYiTX_QpfXAj0imJ_-Bw6qjP7sJpMqbWiXN4E1oolfmt027oUfXvL8FVo1Yz4gkp97H5k1W4yrFTdx3VYjTcSZfMUP3yzHCm-7kFKOkl0t_CatamNmsc0HPIccGWS4otgCZ41_VwasRK6m6QlXRsmFoi9VO-Xt5sMwFqdwJ9TMlr_awoIwm2iWZ38mnKkYRCSQHu4IZefs9-jH-uMSVsQiBJoC4bGuly31fF7vSXfT9hpmtZwvgWWdbyNWY2IllWvltAOE7rCgRIxH22QLNXieMEy-SrPG2Z_olvY31PfOLP1z3Ko8K3OFzySpNqy3ckhtrtpI7iXEKluKJRJjwO3QLw38Fvv8NfUa2Jc065tZZ1To9SfD6SvMh_giD.N25G4hqwAcDSrk7hgatTSw';
+// Token and address will be fetched dynamically from /get_token
+let currentToken = null;
+let currentDestination = null;
 
 let client;
 let roomSession;
@@ -110,11 +111,25 @@ async function startCall() {
     startBtn.textContent = '🎅 Connecting...';
 
     try {
+        updateStatus('connecting', '🎅 Getting token...');
+
+        // Fetch token and address dynamically from the server
+        const tokenResp = await fetch('/get_token');
+        const tokenData = await tokenResp.json();
+
+        if (tokenData.error) {
+            throw new Error(tokenData.error);
+        }
+
+        currentToken = tokenData.token;
+        currentDestination = tokenData.address;
+
+        console.log('Got token, destination:', currentDestination);
         updateStatus('connecting', '🎅 Connecting to Santa...');
 
-        // Initialize SignalWire client
+        // Initialize SignalWire client with dynamic token
         client = await SignalWire.SignalWire({
-            token: STATIC_TOKEN
+            token: currentToken
         });
 
         // Subscribe to user events at client level
@@ -128,7 +143,7 @@ async function startCall() {
 
         // Dial the call with proper parameters (following holyguacamole pattern)
         roomSession = await client.dial({
-            to: DESTINATION,
+            to: currentDestination,
             rootElement: videoContainer,  // SignalWire will inject video here
             audio: {
                 echoCancellation: audioSettings.echoCancellation,

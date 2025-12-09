@@ -6,18 +6,24 @@ Powered by SignalWire and RapidAPI
 
 import random
 import os
+import time
 import requests
 from pathlib import Path
 from typing import Dict, List
 from signalwire_agents import AgentBase, AgentServer
 from signalwire_agents.core.function_result import SwaigFunctionResult
 from dotenv import load_dotenv
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 # Load environment variables
 load_dotenv()
 
 HOST = os.getenv('HOST', '0.0.0.0')
 PORT = int(os.getenv('PORT', 5000))
+
+# Store the SWML handler info for reuse
+swml_handler_info = {"id": None, "address_id": None, "address": None}
 
 class SantaAIAgent(AgentBase):
     """Santa Claus - Your Christmas Gift Selection Assistant"""
@@ -659,8 +665,158 @@ class SantaAIAgent(AgentBase):
         return super().on_swml_request(request_data, callback_path, request)
 
 
+def get_signalwire_host():
+    """Get the full SignalWire host from space name."""
+    space = os.getenv("SIGNALWIRE_SPACE_NAME", "")
+    if not space:
+        return None
+    # If it's already a full domain, use it as-is
+    if "." in space:
+        return space
+    # Otherwise append .signalwire.com
+    return f"{space}.signalwire.com"
+
+
+def find_existing_handler(sw_host, auth, agent_name):
+    """Find an existing SWML handler by name."""
+    try:
+        # List all external SWML handlers
+        resp = requests.get(
+            f"https://{sw_host}/api/fabric/resources/external_swml_handlers",
+            auth=auth,
+            headers={"Accept": "application/json"}
+        )
+        if resp.status_code != 200:
+            print(f"Failed to list handlers: {resp.status_code}")
+            return None
+
+        handlers = resp.json().get("data", [])
+
+        for handler in handlers:
+            # The name is nested in swml_webhook object
+            swml_webhook = handler.get("swml_webhook", {})
+            handler_name = swml_webhook.get("name") or handler.get("display_name")
+
+            # Check if this handler matches our agent name
+            if handler_name == agent_name:
+                handler_id = handler.get("id")
+                handler_url = swml_webhook.get("primary_request_url", "")
+                # Get the address for this handler
+                addr_resp = requests.get(
+                    f"https://{sw_host}/api/fabric/resources/external_swml_handlers/{handler_id}/addresses",
+                    auth=auth,
+                    headers={"Accept": "application/json"}
+                )
+                if addr_resp.status_code == 200:
+                    addresses = addr_resp.json().get("data", [])
+                    if addresses:
+                        return {
+                            "id": handler_id,
+                            "name": handler_name,
+                            "url": handler_url,
+                            "address_id": addresses[0]["id"],
+                            "address": addresses[0]["channels"]["audio"]
+                        }
+    except Exception as e:
+        print(f"Error checking existing handlers: {e}")
+    return None
+
+
+def setup_swml_handler():
+    """Set up SWML handler on startup."""
+    sw_host = get_signalwire_host()
+    project = os.getenv("SIGNALWIRE_PROJECT_ID", "")
+    token = os.getenv("SIGNALWIRE_TOKEN", "")
+    agent_name = os.getenv("AGENT_NAME", "santa")
+    proxy_url = os.getenv("SWML_PROXY_URL_BASE", os.getenv("APP_URL", ""))
+    auth_user = os.getenv("SWML_BASIC_AUTH_USER", "")
+    auth_pass = os.getenv("SWML_BASIC_AUTH_PASSWORD", "")
+
+    if not all([sw_host, project, token]):
+        print("SignalWire credentials not configured - skipping SWML handler setup")
+        return
+
+    if not proxy_url:
+        print("SWML_PROXY_URL_BASE/APP_URL not set - skipping SWML handler setup")
+        return
+
+    # Build SWML URL with basic auth credentials
+    if auth_user and auth_pass and "://" in proxy_url:
+        scheme, rest = proxy_url.split("://", 1)
+        swml_url = f"{scheme}://{auth_user}:{auth_pass}@{rest}/santa"
+    else:
+        swml_url = proxy_url + "/santa"
+
+    auth = (project, token)
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+
+    # Look for an existing handler by name
+    existing = find_existing_handler(sw_host, auth, agent_name)
+    if existing:
+        swml_handler_info["id"] = existing["id"]
+        swml_handler_info["address_id"] = existing["address_id"]
+        swml_handler_info["address"] = existing["address"]
+
+        # Check if the URL needs updating
+        if existing.get("url") != swml_url:
+            try:
+                update_resp = requests.put(
+                    f"https://{sw_host}/api/fabric/resources/external_swml_handlers/{existing['id']}",
+                    json={
+                        "primary_request_url": swml_url,
+                        "primary_request_method": "POST"
+                    },
+                    auth=auth,
+                    headers=headers
+                )
+                update_resp.raise_for_status()
+                print(f"Updated SWML handler: {existing['name']}")
+                print(f"New URL: {swml_url}")
+            except Exception as e:
+                print(f"Failed to update handler URL: {e}")
+        else:
+            print(f"Using existing SWML handler: {existing['name']}")
+
+        print(f"Call address: {existing['address']}")
+    else:
+        # Create a new external SWML handler with the agent name
+        try:
+            handler_resp = requests.post(
+                f"https://{sw_host}/api/fabric/resources/external_swml_handlers",
+                json={
+                    "name": agent_name,
+                    "used_for": "calling",
+                    "primary_request_url": swml_url,
+                    "primary_request_method": "POST"
+                },
+                auth=auth,
+                headers=headers
+            )
+            handler_resp.raise_for_status()
+            handler_id = handler_resp.json().get("id")
+            swml_handler_info["id"] = handler_id
+
+            # Get the address for this handler
+            addr_resp = requests.get(
+                f"https://{sw_host}/api/fabric/resources/external_swml_handlers/{handler_id}/addresses",
+                auth=auth,
+                headers={"Accept": "application/json"}
+            )
+            addr_resp.raise_for_status()
+            addresses = addr_resp.json().get("data", [])
+            if addresses:
+                swml_handler_info["address_id"] = addresses[0]["id"]
+                swml_handler_info["address"] = addresses[0]["channels"]["audio"]
+                print(f"Created SWML handler: {agent_name}")
+                print(f"Call address: {swml_handler_info['address']}")
+            else:
+                print("No address found for handler")
+        except Exception as e:
+            print(f"Failed to create SWML handler: {e}")
+
+
 def create_server():
-    """Create AgentServer with static file mounting."""
+    """Create AgentServer with static file mounting and API endpoints."""
     server = AgentServer(host=HOST, port=PORT)
     server.register(SantaAIAgent(), "/santa")
 
@@ -669,8 +825,75 @@ def create_server():
     if web_dir.exists():
         server.serve_static_files(str(web_dir))
 
+    # Add /get_token endpoint for WebRTC calls
+    @server.app.get('/get_token')
+    def get_token():
+        """Get a guest token for the web client to call the agent."""
+        sw_host = get_signalwire_host()
+        project = os.getenv("SIGNALWIRE_PROJECT_ID", "")
+        token = os.getenv("SIGNALWIRE_TOKEN", "")
+
+        if not all([sw_host, project, token]):
+            return JSONResponse({"error": "SignalWire credentials not configured"}, status_code=500)
+
+        if not swml_handler_info["address_id"]:
+            return JSONResponse({"error": "SWML handler not configured - check startup logs"}, status_code=500)
+
+        auth = (project, token)
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+
+        try:
+            # Create a guest token with access to this address
+            expire_at = int(time.time()) + 3600 * 24  # 24 hours
+
+            guest_resp = requests.post(
+                f"https://{sw_host}/api/fabric/guests/tokens",
+                json={
+                    "allowed_addresses": [swml_handler_info["address_id"]],
+                    "expire_at": expire_at
+                },
+                auth=auth,
+                headers=headers
+            )
+            guest_resp.raise_for_status()
+            guest_token = guest_resp.json().get("token", "")
+
+            return {
+                "token": guest_token,
+                "address": swml_handler_info["address"]
+            }
+
+        except requests.exceptions.RequestException as e:
+            print(f"Token request failed: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Response: {e.response.text}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    # Add /get_credentials endpoint for curl examples
+    @server.app.get('/get_credentials')
+    def get_credentials():
+        """Get basic auth credentials for the web UI."""
+        return {
+            "user": os.getenv("SWML_BASIC_AUTH_USER", ""),
+            "password": os.getenv("SWML_BASIC_AUTH_PASSWORD", "")
+        }
+
+    # Add /get_resource_info endpoint for dashboard links
+    @server.app.get('/get_resource_info')
+    def get_resource_info():
+        """Get SWML handler resource info for linking to SignalWire dashboard."""
+        sw_host = get_signalwire_host()
+        return {
+            "space_name": os.getenv("SIGNALWIRE_SPACE_NAME", ""),
+            "resource_id": swml_handler_info["id"],
+            "dashboard_url": f"https://{sw_host}/neon/resources/{swml_handler_info['id']}/edit?t=addresses" if sw_host and swml_handler_info["id"] else None
+        }
+
     return server
 
+
+# Set up SWML handler on module load
+setup_swml_handler()
 
 # Create server and expose app for gunicorn
 server = create_server()
