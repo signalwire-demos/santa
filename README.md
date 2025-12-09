@@ -1,6 +1,6 @@
-# santa
+# Santa AI Agent
 
-A SignalWire AI Agent with automated GitHub → Dokku deployments.
+A SignalWire AI Agent - Santa's Gift Workshop with automated GitHub → Dokku deployments.
 
 ## Features
 
@@ -8,21 +8,23 @@ A SignalWire AI Agent with automated GitHub → Dokku deployments.
 - ✅ Preview environments for pull requests
 - ✅ Automatic SSL via Let's Encrypt
 - ✅ Zero-downtime deployments
-- ✅ Multi-environment support
+- ✅ Dynamic WebRTC token generation
+- ✅ Gift search via RapidAPI
 
 ## Setup
 
-### 1. GitHub Secrets
+### 1. GitHub Secrets (App Configuration)
 
 Add these secrets to your repository (Settings → Secrets → Actions):
 
-| Secret | Description |
-|--------|-------------|
-| `DOKKU_HOST` | Your Dokku server hostname |
-| `DOKKU_SSH_PRIVATE_KEY` | SSH private key for deployments |
-| `BASE_DOMAIN` | Base domain (e.g., `yourdomain.com`) |
-| `SWML_BASIC_AUTH_USER` | Basic auth username |
-| `SWML_BASIC_AUTH_PASSWORD` | Basic auth password |
+| Secret | Required | Description |
+|--------|----------|-------------|
+| `SIGNALWIRE_SPACE_NAME` | Yes | Your SignalWire space (e.g., `myspace.signalwire.com`) |
+| `SIGNALWIRE_PROJECT_ID` | Yes | SignalWire project ID |
+| `SIGNALWIRE_TOKEN` | Yes | SignalWire API token |
+| `RAPIDAPI_KEY` | Yes | RapidAPI key for gift search |
+| `SWML_BASIC_AUTH_USER` | No | Basic auth username for SWML endpoint |
+| `SWML_BASIC_AUTH_PASSWORD` | No | Basic auth password for SWML endpoint |
 
 ### 2. GitHub Environments
 
