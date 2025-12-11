@@ -601,40 +601,18 @@ class SantaAIAgent(AgentBase):
     def on_swml_request(self, request_data: Dict, callback_path: str, request=None) -> Dict:
         """Handle incoming SWML requests and configure the AI agent"""
 
-        # Detect host from request for video URLs
-        host = "localhost:5000"
-        protocol = "http"
-
-        if request:
-            # Try to get the host from headers
-            headers = {k.lower(): v for k, v in request.headers.items()}
-            host = headers.get('host', host)
-
-            # Check if we're behind a proxy with x-forwarded-proto
-            protocol = headers.get('x-forwarded-proto', 'https')
-
-            # Override protocol for local development
-            if 'localhost' in host or '127.0.0.1' in host:
-                protocol = 'http'
+        # Get the base URL using SDK's auto-detection from X-Forwarded headers
+        # Falls back to SWML_PROXY_URL_BASE or APP_URL if needed
+        base_url = self.get_full_url(include_auth=False)
 
         # Set video URLs using set_param (this is what makes video work!)
-        if host:
-            base_url = f"{protocol}://{host}"
+        if base_url:
             self.set_param("video_idle_file", f"{base_url}/santa_idle.mp4")
             self.set_param("video_talking_file", f"{base_url}/santa_talking.mp4")
             # Add background music for festive atmosphere
             self.set_param("background_file", f"{base_url}/background.mp3")
             self.set_param("background_file_volume", -10)
             print(f"Set video URLs to use host: {base_url}")
-        else:
-            # Fallback to environment variables or defaults
-            video_idle = os.getenv('VIDEO_IDLE_URL', f"{protocol}://{host}/santa_idle.mp4")
-            video_talking = os.getenv('VIDEO_TALKING_URL', f"{protocol}://{host}/santa_talking.mp4")
-            self.set_param("video_idle_file", video_idle)
-            self.set_param("video_talking_file", video_talking)
-            # Add background music for festive atmosphere
-            self.set_param("background_file", f"{protocol}://{host}/background.mp3")
-            self.set_param("background_file_volume", -10)
 
         # Configure Santa voice as part of language settings (like holyguacamole)
         voice_id = 'uDsPstFWFBUXjIBimV7s'  # Santa voice from SignalWire guide

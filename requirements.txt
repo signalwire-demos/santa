@@ -1,7 +1,6 @@
 signalwire-agents==1.0.15
 fastapi==0.115.12
-uvicorn==0.34.2
+uvicorn>=0.34.2
 gunicorn==23.0.0
-python-multipart==0.0.17
 requests>=2.32.3
 python-dotenv==1.0.0
