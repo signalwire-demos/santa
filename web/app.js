@@ -1,15 +1,22 @@
 // Santa's Gift Workshop - Interactive Frontend
-// Handles SignalWire connection and dynamic gift display
+// Handles SignalWire connection (v4 SDK) and dynamic gift display
 
-// Token and address will be fetched dynamically from /get_token
+// Token and address are fetched dynamically from /get_token
 let currentToken = null;
 let currentDestination = null;
 
 let client;
-let roomSession;
+let call;
 let isMuted = false;
 
-// Audio settings (default all off)
+// v4: track every RxJS Subscription so teardown can unsubscribe them all
+let subscriptions = [];
+let currentLocalStream = null;
+let remoteVideoEl = null;
+let lastRemoteSig = '';
+let teardownDone = false;
+
+// Audio settings (default all off except echo cancellation)
 let audioSettings = {
     echoCancellation: true,
     noiseSuppression: false,
@@ -99,7 +106,102 @@ function saveSettings() {
     updateSantaMessage('Audio settings updated! Apply on next call.');
 }
 
-// Start call to Santa
+// --- v4 helpers ---------------------------------------------------------
+
+// Track an RxJS subscription for later teardown
+function track(sub) {
+    if (sub) subscriptions.push(sub);
+    return sub;
+}
+
+// Build a stable signature for a stream's track set (kind:id, sorted)
+function streamSignature(stream) {
+    return stream.getTracks().map(t => t.kind + ':' + t.id).sort().join(',');
+}
+
+// Hardened token fetch: tolerate the FastAPI tuple-return array shape and
+// validate the payload so a bad response fails loudly instead of feeding
+// token: undefined into the SDK.
+async function fetchGuestToken() {
+    const resp = await fetch('/get_token');
+    let data = await resp.json();
+    if (Array.isArray(data)) data = data[0] || {};
+    if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+    if (!data.token || !data.address) throw new Error('Token response missing token/address');
+    return data;
+}
+
+// Gate the dial on the client actually connecting. isConnected$ replays
+// synchronously on subscribe (settle via flag, defer unsubscribe) and never
+// errors on bad creds (add a timeout or the UI hangs).
+function waitForConnected(swClient, timeoutMs) {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        let sub = null;
+        const timer = setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            if (sub) { try { sub.unsubscribe(); } catch (e) {} }
+            reject(new Error('Timed out waiting for SignalWire connection'));
+        }, timeoutMs);
+        sub = swClient.isConnected$.subscribe(connected => {
+            if (connected && !settled) {
+                settled = true;
+                clearTimeout(timer);
+                setTimeout(() => { if (sub) { try { sub.unsubscribe(); } catch (e) {} } }, 0);
+                resolve();
+            }
+        });
+    });
+}
+
+// Render the remote (Santa avatar) stream ourselves. Leave it UNMUTED — it
+// carries the remote audio, and connect is user-gesture-initiated so
+// autoplay-with-sound is allowed. Re-attach whenever the track set changes: the
+// SDK re-emits the same MediaStream as tracks arrive and Chromium may otherwise
+// never render a late video track.
+function attachRemoteStream(stream) {
+    if (!stream) return;
+    const container = document.getElementById('video-container');
+    if (!container) return;
+
+    const placeholder = document.getElementById('video-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+
+    if (!remoteVideoEl) {
+        remoteVideoEl = document.createElement('video');
+        remoteVideoEl.autoplay = true;
+        remoteVideoEl.playsInline = true;
+        remoteVideoEl.setAttribute('playsinline', '');
+        remoteVideoEl.style.width = '100%';
+        remoteVideoEl.style.height = '100%';
+        remoteVideoEl.style.objectFit = 'cover';
+        container.appendChild(remoteVideoEl);
+    }
+
+    const sig = streamSignature(stream);
+    if (sig !== lastRemoteSig) {
+        lastRemoteSig = sig;
+        remoteVideoEl.srcObject = stream;
+        remoteVideoEl.play().catch(e => console.log('Remote video play blocked:', e.message));
+    }
+}
+
+// UI transition once the call reaches 'connected'
+function onConnected() {
+    const placeholder = document.getElementById('video-placeholder');
+    if (placeholder) placeholder.style.display = 'none';
+
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('endBtn').style.display = 'block';
+    document.getElementById('muteBtn').style.display = 'block';
+
+    updateStatus('connected', '🎄 Talking with Santa!');
+    updateSantaMessage('Ho ho ho! Hello there! What\'s your name?');
+}
+
+// --- Connection (v4) ----------------------------------------------------
+
 async function startCall() {
     // Debounce - disable button immediately to prevent double-clicks
     const startBtn = document.getElementById('startBtn');
@@ -110,152 +212,88 @@ async function startCall() {
     startBtn.disabled = true;
     startBtn.textContent = '🎅 Connecting...';
 
+    // Reset per-connection state
+    teardownDone = false;
+    subscriptions = [];
+    currentLocalStream = null;
+    remoteVideoEl = null;
+    lastRemoteSig = '';
+
     try {
         updateStatus('connecting', '🎅 Getting token...');
 
         // Fetch token and address dynamically from the server
-        const tokenResp = await fetch('/get_token');
-        const tokenData = await tokenResp.json();
-
-        if (tokenData.error) {
-            throw new Error(tokenData.error);
-        }
-
+        const tokenData = await fetchGuestToken();
         currentToken = tokenData.token;
         currentDestination = tokenData.address;
 
         console.log('Got token, destination:', currentDestination);
         updateStatus('connecting', '🎅 Connecting to Santa...');
 
-        // Initialize SignalWire client with dynamic token
-        if (window.SignalWire && typeof window.SignalWire.SignalWire === 'function') {
-            console.log('Initializing SignalWire client...');
-            client = await window.SignalWire.SignalWire({
-                token: currentToken,
-                logLevel: 'debug'
-            });
-        } else {
-            console.error('SignalWire SDK structure:', window.SignalWire);
-            throw new Error('SignalWire.SignalWire function not found');
+        // UMD global is window.SignalWire
+        const SW = window.SignalWire;
+        if (!SW || typeof SW.SignalWire !== 'function') {
+            throw new Error('SignalWire v4 SDK not loaded');
         }
 
-        // Subscribe to user events at client level
-        client.on('user_event', (params) => {
-            console.log('🎅 CLIENT EVENT: user_event', params);
-            handleUserEvent(params);
-        });
+        // v4: constructor auto-connects; class, not factory. A guest SAT works as
+        // a plain bearer via StaticCredentialProvider.
+        client = new SW.SignalWire(new SW.StaticCredentialProvider({ token: currentToken }));
 
-        // Get video container for SignalWire to inject video
-        const videoContainer = document.getElementById('video-container');
+        // v4: surface SDK errors/warnings (replaces logLevel: 'debug')
+        track(client.errors$.subscribe(e => console.error('SDK error:', e && e.code, e && e.message)));
+        track(client.warnings$.subscribe(w => console.warn('SDK warning:', w && w.code, w && w.message)));
 
-        // Dial the call with proper parameters (following holyguacamole pattern)
-        roomSession = await client.dial({
-            to: currentDestination,
-            rootElement: videoContainer,  // SignalWire will inject video here
-            audio: {
-                echoCancellation: audioSettings.echoCancellation,
-                noiseSuppression: audioSettings.noiseSuppression,
-                autoGainControl: audioSettings.autoGainControl
-            },
-            video: true,
-            negotiateVideo: true,  // Important for video negotiation with AI agent
+        await waitForConnected(client, 15000);
+        console.log('Client connected');
+
+        // Santa has no vision, so no camera is needed: video:false + receiveVideo
+        // gives receive-only avatar video and skips the camera permission prompt.
+        call = await client.dial(currentDestination, {
+            audio: audioSettings,
+            video: false,
+            receiveAudio: true,
+            receiveVideo: true,
             userVariables: {
                 userName: 'Santa Workshop Guest',
-                interface: 'web-ui',
-                timestamp: new Date().toISOString()
+                interface: 'web-ui-v4'
             }
         });
+        console.log('Call created');
 
-        console.log('Room session created:', roomSession);
+        // Remote avatar video + audio
+        track(call.remoteStream$.subscribe(stream => attachRemoteStream(stream)));
+        // Keep a handle on the local stream for the mute fallback
+        track(call.localStream$.subscribe(stream => { currentLocalStream = stream || null; }));
 
-        // Subscribe to room session events
-        roomSession.on('call.joined', async (params) => {
-            console.log('Call joined:', params);
-
-            // Hide the placeholder when connected
-            const placeholder = document.getElementById('video-placeholder');
-            if (placeholder) {
-                placeholder.style.display = 'none';
-            }
-
-            handleRoomJoined(params);
-        });
-
-        roomSession.on('call.updated', async (params) => {
-            console.log('Call updated:', params);
-            handleRoomUpdated(params);
-        });
-
-        roomSession.on('call.ended', async (params) => {
-            console.log('Call ended:', params);
-            handleRoomEnded(params);
-            disconnect();
-        });
-
-        // Handle various disconnect events
-        roomSession.on('destroy', (params) => {
-            console.log('Session destroyed:', params);
-            disconnect();
-        });
-
-        roomSession.on('room.left', (params) => {
-            console.log('Room left:', params);
-            disconnect();
-        });
-
-        // Handle video stream events
-        roomSession.on('stream.started', async (params) => {
-            console.log('Stream started:', params);
-        });
-
-        roomSession.on('media.connected', async (params) => {
-            console.log('Media connected:', params);
-        });
-
-        // Handle user events on room session too
-        roomSession.on('user_event', (params) => {
-            console.log('🎅 ROOM EVENT: user_event', params);
-            console.log('Event params structure:', JSON.stringify(params, null, 2));
+        // Single user_event subscription. handleUserEvent unwraps the SWML
+        // {event:{...}} payload; feed it evt.params.
+        track(call.subscribe('user_event').subscribe(evt => {
+            const params = (evt && evt.params) ? evt.params : evt;
             handleUserEvent(params);
-        });
+        }));
 
-        // START THE CALL - Critical!
-        await roomSession.start();
-        console.log('Call started successfully');
-
-        // Update UI
-        document.getElementById('startBtn').style.display = 'none';
-        document.getElementById('endBtn').style.display = 'block';
-        document.getElementById('muteBtn').style.display = 'block';
-
-        updateStatus('connected', '🎄 Talking with Santa!');
+        // Call lifecycle
+        track(call.status$.subscribe({
+            next: (status) => {
+                console.log('call.status:', status);
+                if (status === 'connected') {
+                    onConnected();
+                } else if (status === 'disconnected' || status === 'failed' || status === 'destroyed') {
+                    disconnect();
+                }
+            },
+            // The SDK completes the subject on destroy, sometimes without a
+            // terminal status — treat completion as a teardown too.
+            complete: () => disconnect()
+        }));
 
     } catch (error) {
         console.error('Failed to connect to Santa:', error);
         updateStatus('error', '❌ Could not reach Santa');
-
-        // Re-enable the start button on error
-        const startBtn = document.getElementById('startBtn');
-        startBtn.disabled = false;
-        startBtn.innerHTML = '<span class="btn-icon">🎤</span><span class="btn-text">Talk to Santa!</span>';
+        updateSantaMessage('Could not reach Santa: ' + error.message);
+        disconnect();
     }
-}
-
-// Handle room joined
-function handleRoomJoined(params) {
-    console.log('Connected to Santa\'s Workshop!', params);
-    updateSantaMessage('Ho ho ho! Hello there! What\'s your name?');
-}
-
-// Handle room updates
-function handleRoomUpdated(params) {
-    console.log('Room updated:', params);
-}
-
-// Handle room ended
-function handleRoomEnded(params) {
-    console.log('Call with Santa ended', params);
-    resetUI();
 }
 
 // End call button handler - properly hangup first
@@ -264,64 +302,50 @@ async function endCall() {
     await hangup();
 }
 
-// Hangup function (following holyguacamole pattern)
+// Hangup
 async function hangup() {
     try {
-        if (roomSession) {
+        if (call) {
             console.log('Hanging up call...');
-            await roomSession.hangup();
-            console.log('Call hung up successfully');
+            await call.hangup();
         }
     } catch (error) {
         console.error('Hangup error:', error);
         // Continue with disconnect even if hangup fails
     }
-
-    // Always disconnect to clean up
     disconnect();
 }
 
-// Disconnect and cleanup (following holyguacamole pattern)
+// Disconnect and clean up (deduped, unsubscribes all RxJS subscriptions)
 function disconnect() {
+    if (teardownDone) return;
+    teardownDone = true;
     console.log('Disconnect called - cleaning up...');
 
-    // Clean up local stream if it exists
-    if (roomSession && roomSession.localStream) {
-        console.log('Stopping local stream tracks');
-        roomSession.localStream.getTracks().forEach(track => {
-            track.stop();
-        });
-    }
+    // Unsubscribe every tracked RxJS subscription
+    subscriptions.forEach(s => { try { s.unsubscribe(); } catch (e) {} });
+    subscriptions = [];
 
-    // Clean up room session
-    roomSession = null;
-
-    // Disconnect the client properly
+    // Disconnect the client
     if (client) {
-        try {
-            console.log('Disconnecting client');
-            client.disconnect();
-        } catch (e) {
-            console.log('Client disconnect error:', e);
-        }
+        try { client.disconnect(); } catch (e) { console.log('Client disconnect error:', e); }
         client = null;
     }
+    call = null;
+    currentLocalStream = null;
+    remoteVideoEl = null;
+    lastRemoteSig = '';
+    isMuted = false;
 
-    // Clean up video container
+    // Clean up video container and restore the placeholder
     const videoContainer = document.getElementById('video-container');
     if (videoContainer) {
-        console.log('Cleaning video container');
-
-        // Stop any video streams in the container
-        const videos = videoContainer.querySelectorAll('video');
-        videos.forEach(video => {
-            if (video.srcObject) {
-                video.srcObject.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-            }
+        // Detach any video elements (tracks are owned by the call)
+        videoContainer.querySelectorAll('video').forEach(video => {
+            video.srcObject = null;
+            video.remove();
         });
 
-        // Clear and restore placeholder
         videoContainer.innerHTML = '';
         const placeholder = document.createElement('div');
         placeholder.id = 'video-placeholder';
@@ -345,32 +369,29 @@ function disconnect() {
     resetUI();
 }
 
-// Toggle mute - using the holyguacamole method that actually works
-function toggleMute() {
-    if (!roomSession) return;
+// Toggle mute — v4: server-side self.mute()/unmute() with a local-track fallback
+async function toggleMute() {
+    if (!call) return;
 
-    isMuted = !isMuted;
-
-    // Mute/unmute by controlling the audio tracks directly
+    const wantMuted = !isMuted;
+    let ok = false;
     try {
-        if (roomSession.localStream) {
-            // Mute/unmute the audio track
-            const audioTracks = roomSession.localStream.getAudioTracks();
-            audioTracks.forEach(track => {
-                track.enabled = !isMuted;
-            });
-        } else if (roomSession.peer && roomSession.peer.localStream) {
-            // Try alternate method
-            const audioTracks = roomSession.peer.localStream.getAudioTracks();
-            audioTracks.forEach(track => {
-                track.enabled = !isMuted;
-            });
+        if (wantMuted) {
+            await call.self.mute();
         } else {
-            console.warn('Unable to find local stream to mute/unmute');
+            await call.self.unmute();
         }
+        ok = true;
     } catch (e) {
-        console.error('Error toggling mute:', e);
+        console.warn('Server mute failed, using local fallback:', e.message);
     }
+
+    if (!ok) {
+        const tracks = currentLocalStream ? currentLocalStream.getAudioTracks() : [];
+        tracks.forEach(t => { t.enabled = !wantMuted; });
+    }
+
+    isMuted = wantMuted;
 
     // Update button text
     document.getElementById('muteBtn').innerHTML = isMuted ?
@@ -385,7 +406,7 @@ function toggleMute() {
 function handleUserEvent(params) {
     console.log('User event received:', params);
 
-    // Match holyguacamole's event structure handling
+    // SWML user_event wraps its payload under .event
     let eventData = params;
     if (params && params.event) {
         eventData = params.event;
@@ -396,7 +417,7 @@ function handleUserEvent(params) {
         return;
     }
 
-    const eventType = eventData.type;  // Changed from event_type to type
+    const eventType = eventData.type;
 
     // Comprehensive debug logging
     console.log('\n=== FRONTEND EVENT RECEIVED ===');
@@ -826,9 +847,9 @@ window.toggleEventLog = function() {
     log.style.display = log.style.display === 'none' ? 'block' : 'none';
 };
 
-// Clean up on page unload (following holyguacamole pattern)
+// Clean up on page unload
 window.addEventListener('beforeunload', () => {
-    if (roomSession) {
+    if (call) {
         hangup();
     }
 });

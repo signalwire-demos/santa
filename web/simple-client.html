@@ -126,19 +126,13 @@
             object-fit: contain;
             background: #000;
         }
-        
-        /* Style SignalWire's injected video elements */
+
+        /* Style the injected remote video element */
         #remoteVideoWrapper video {
             width: 100% !important;
             height: 100% !important;
             object-fit: contain !important;
             background: #000 !important;
-        }
-        
-        /* Ensure SignalWire's wrapper div fills the container */
-        #remoteVideoWrapper > div {
-            width: 100% !important;
-            height: 100% !important;
         }
 
         .video-label {
@@ -150,6 +144,7 @@
             padding: 5px 10px;
             border-radius: 5px;
             font-size: 14px;
+            z-index: 1;
         }
 
         .members-list {
@@ -190,7 +185,7 @@
         .audio-off { background: #ef4444; }
         .video-on { background: #10b981; }
         .video-off { background: #ef4444; }
-        
+
         .events-viewer {
             margin-top: 20px;
             padding: 15px;
@@ -198,7 +193,7 @@
             border-radius: 10px;
             color: #f3f4f6;
         }
-        
+
         .events-header {
             display: flex;
             justify-content: space-between;
@@ -207,13 +202,13 @@
             padding-bottom: 10px;
             border-bottom: 1px solid #374151;
         }
-        
+
         .events-title {
             font-size: 14px;
             font-weight: 600;
             color: #10b981;
         }
-        
+
         .events-clear {
             background: #374151;
             color: white;
@@ -223,11 +218,11 @@
             font-size: 12px;
             cursor: pointer;
         }
-        
+
         .events-clear:hover {
             background: #4b5563;
         }
-        
+
         .events-container {
             max-height: 300px;
             overflow-y: auto;
@@ -235,7 +230,7 @@
             border-radius: 5px;
             padding: 10px;
         }
-        
+
         .event-entry {
             margin-bottom: 10px;
             padding: 8px;
@@ -244,18 +239,18 @@
             border-left: 3px solid #374151;
             font-size: 12px;
         }
-        
+
         .event-entry.user-event {
             border-left-color: #10b981;
             background: #064e3b;
         }
-        
+
         .event-time {
             color: #9ca3af;
             font-size: 10px;
             margin-bottom: 4px;
         }
-        
+
         .event-data {
             color: #60a5fa;
             font-family: monospace;
@@ -271,7 +266,7 @@
             .video-container {
                 grid-template-columns: 1fr;
             }
-            
+
             .container {
                 padding: 20px;
             }
@@ -281,7 +276,7 @@
 <body>
     <div class="container">
         <h1>SignalWire Video Room</h1>
-        
+
         <div id="status" class="status disconnected">
             Disconnected
         </div>
@@ -300,7 +295,7 @@
             </div>
             <div class="video-wrapper" id="remoteVideoWrapper">
                 <div class="video-label">Remote Video</div>
-                <!-- SignalWire will inject video element here -->
+                <!-- remote video element is injected here -->
             </div>
         </div>
 
@@ -308,7 +303,7 @@
             <h3>Room Members</h3>
             <div id="membersContainer"></div>
         </div>
-        
+
         <div class="events-viewer">
             <div class="events-header">
                 <span class="events-title">📡 User Events</span>
@@ -322,15 +317,20 @@
         </div>
     </div>
 
-    <script type="text/javascript" src="https://cdn.signalwire.com/@signalwire/js"></script>
+    <script type="text/javascript" src="https://cdn.signalwire.com/@signalwire/js@4.0.0-rc.0"></script>
     <script type="text/javascript">
-        // Configuration
-        const DESTINATION = '/public/holy-guacamole';
-        const STATIC_TOKEN = 'eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIiwidHlwIjoiU0FUIiwiY2giOiJwdWMuc2lnbmFsd2lyZS5jb20ifQ..D_TMjgEuu4yuF6fX.t47i-K3zYMSIU3IdFOXmC_8JtIVlDXkanuID9kEq1uM_cmJwnNtEHIG-LCYLMB5l2MfL5veedK2cejbD_o_dj-pSZgYqh4Qn9e7Lmv1BQBnqwCLsc7nZ1U3kg0c6TYZvFWOR3rgrUAlBcP4G_VSl7IjgRorh2dL4BoCTsMSvuLoKyBzvRs2JbZGmJ9UjI0JYzXdlVf1h24Pa3MP0SoPwyQ9Z7wGmxIXdHJ_ovdVspkCO60oFlmIMhn_WbW2jGq-n8TkclEkM_cLcz1OjUDhai_xMYeqBJlfJNz2OoD8UIg1e60d0fc2NP84wU1_uYgZ4CCe9lIuVmzpsQkun-pfMDMgUcR9Uf4YpVEZDToecvP7tzgSgwvTNR3o9FBEHhDienhuYiHE35uWs9ktoElMxYR28BdF7H3YwFuzg2TvHtzUhi80IORVPLPWtH4goagDFbel_zEWc_nn8xcahpbrC4sKlTIJ1I9iPfDsCOAps30uVlHFRq7LElGQw_15QqU2S13GDneBv9uAQGRVxnKD5h_moogKfuofRp3EcCxTe.65H02il38BhCkGPkDVM8xA';
+        // Token + destination are fetched dynamically from /get_token so this
+        // client works against whatever agent the server has registered.
+        let currentDestination = null;
 
         // State
         let client = null;
-        let roomSession = null;
+        let call = null;
+        let subscriptions = [];
+        let currentLocalStream = null;
+        let remoteVideoEl = null;
+        let lastRemoteSig = '';
+        let teardownDone = false;
         let audioEnabled = true;
         let videoEnabled = true;
 
@@ -341,7 +341,6 @@
         const toggleAudioBtn = document.getElementById('toggleAudioBtn');
         const toggleVideoBtn = document.getElementById('toggleVideoBtn');
         const localVideo = document.getElementById('localVideo');
-        const remoteVideo = document.getElementById('remoteVideo');
         const membersList = document.getElementById('membersList');
         const membersContainer = document.getElementById('membersContainer');
         const eventsContainer = document.getElementById('eventsContainer');
@@ -352,18 +351,95 @@
             statusEl.textContent = message;
         }
 
+        // --- v4 helpers -------------------------------------------------
+
+        // Track an RxJS subscription for later teardown
+        function track(sub) {
+            if (sub) subscriptions.push(sub);
+            return sub;
+        }
+
+        // Stable signature for a stream's track set (kind:id, sorted)
+        function streamSignature(stream) {
+            return stream.getTracks().map(t => t.kind + ':' + t.id).sort().join(',');
+        }
+
+        // Hardened token fetch (tolerates the FastAPI tuple-return array shape)
+        async function fetchGuestToken() {
+            const resp = await fetch('/get_token');
+            let data = await resp.json();
+            if (Array.isArray(data)) data = data[0] || {};
+            if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+            if (!data.token || !data.address) throw new Error('Token response missing token/address');
+            return data;
+        }
+
+        // Gate the dial on the client connecting (replays synchronously; never
+        // errors on bad creds -> needs a timeout).
+        function waitForConnected(swClient, timeoutMs) {
+            return new Promise((resolve, reject) => {
+                let settled = false;
+                let sub = null;
+                const timer = setTimeout(() => {
+                    if (settled) return;
+                    settled = true;
+                    if (sub) { try { sub.unsubscribe(); } catch (e) {} }
+                    reject(new Error('Timed out waiting for SignalWire connection'));
+                }, timeoutMs);
+                sub = swClient.isConnected$.subscribe(connected => {
+                    if (connected && !settled) {
+                        settled = true;
+                        clearTimeout(timer);
+                        setTimeout(() => { if (sub) { try { sub.unsubscribe(); } catch (e) {} } }, 0);
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        // Local self-preview (element is muted in markup to avoid feedback)
+        function attachLocalStream(stream) {
+            currentLocalStream = stream || null;
+            if (localVideo.srcObject !== stream) {
+                localVideo.srcObject = stream || null;
+            }
+        }
+
+        // Render the remote stream into #remoteVideoWrapper. Leave it unmuted
+        // (carries remote audio). Re-attach on track-set change.
+        function attachRemoteStream(stream) {
+            if (!stream) return;
+            const container = document.getElementById('remoteVideoWrapper');
+            if (!container) return;
+
+            if (!remoteVideoEl) {
+                remoteVideoEl = document.createElement('video');
+                remoteVideoEl.autoplay = true;
+                remoteVideoEl.playsInline = true;
+                remoteVideoEl.setAttribute('playsinline', '');
+                container.appendChild(remoteVideoEl);
+            }
+
+            const sig = streamSignature(stream);
+            if (sig !== lastRemoteSig) {
+                lastRemoteSig = sig;
+                remoteVideoEl.srcObject = stream;
+                remoteVideoEl.play().catch(e => console.log('Remote video play blocked:', e.message));
+            }
+        }
+
         // Event logging functions
         function logEvent(message, data = null, isUserEvent = false) {
             // Clear the placeholder if it's still there
             if (eventsContainer.innerHTML.includes('No events received yet')) {
                 eventsContainer.innerHTML = '';
             }
-            
+
             const entry = document.createElement('div');
             entry.className = isUserEvent ? 'event-entry user-event' : 'event-entry';
-            
+
             const time = new Date().toLocaleTimeString();
-            
+
             let dataStr = '';
             if (data) {
                 try {
@@ -382,17 +458,17 @@
                     dataStr = 'Error serializing data: ' + e.message;
                 }
             }
-            
+
             entry.innerHTML = `
                 <div class="event-time">${time}</div>
                 <div>${isUserEvent ? '🟢 USER EVENT: ' : ''}${message}</div>
                 ${dataStr ? `<div class="event-data">${dataStr}</div>` : ''}
             `;
-            
+
             eventsContainer.appendChild(entry);
             eventsContainer.scrollTop = eventsContainer.scrollHeight;
         }
-        
+
         function clearEvents() {
             eventsContainer.innerHTML = `
                 <div style="color: #6b7280; text-align: center; padding: 20px;">
@@ -400,24 +476,24 @@
                 </div>
             `;
         }
-        
-        // Handle user events
-        function handleUserEvent(eventData) {
+
+        // Handle user events (SWML user_event wraps its payload under .event)
+        function handleUserEvent(params) {
+            const eventData = (params && params.event) ? params.event : params;
+            if (!eventData) return;
             console.log('📡 User Event Received:', eventData);
             logEvent(eventData.type || 'Unknown Event', eventData, true);
-            
-            // You can add specific event handling here based on eventData.type
-            // For example:
-            if (eventData.type === 'order_started') {
-                console.log('Order started!');
-            } else if (eventData.type === 'item_added') {
-                console.log('Item added:', eventData.item);
-            }
-            // Add more event types as needed
         }
 
-        // Update Members List
-        function updateMembersList(members) {
+        // Update Members List (defensive about the participants$ emit shape)
+        function updateMembersList(participants) {
+            let members = [];
+            if (Array.isArray(participants)) {
+                members = participants;
+            } else if (participants && typeof participants === 'object') {
+                members = Object.values(participants);
+            }
+
             if (!members || members.length === 0) {
                 membersList.style.display = 'none';
                 return;
@@ -427,23 +503,27 @@
             membersContainer.innerHTML = '';
 
             members.forEach(member => {
+                const name = member.name || member.display_name || member.displayName || member.id || 'Unknown';
+                const audioMuted = member.audio_muted ?? member.audioMuted ?? false;
+                const videoMuted = member.video_muted ?? member.videoMuted ?? false;
+
                 const memberDiv = document.createElement('div');
                 memberDiv.className = 'member';
-                
+
                 const nameSpan = document.createElement('span');
-                nameSpan.textContent = member.name || member.id || 'Unknown';
-                
+                nameSpan.textContent = name;
+
                 const statusDiv = document.createElement('div');
                 statusDiv.className = 'member-status';
-                
+
                 const audioIndicator = document.createElement('span');
-                audioIndicator.className = `status-indicator ${member.audio_muted ? 'audio-off' : 'audio-on'}`;
-                audioIndicator.title = member.audio_muted ? 'Audio Off' : 'Audio On';
-                
+                audioIndicator.className = `status-indicator ${audioMuted ? 'audio-off' : 'audio-on'}`;
+                audioIndicator.title = audioMuted ? 'Audio Off' : 'Audio On';
+
                 const videoIndicator = document.createElement('span');
-                videoIndicator.className = `status-indicator ${member.video_muted ? 'video-off' : 'video-on'}`;
-                videoIndicator.title = member.video_muted ? 'Video Off' : 'Video On';
-                
+                videoIndicator.className = `status-indicator ${videoMuted ? 'video-off' : 'video-on'}`;
+                videoIndicator.title = videoMuted ? 'Video Off' : 'Video On';
+
                 statusDiv.appendChild(audioIndicator);
                 statusDiv.appendChild(videoIndicator);
                 memberDiv.appendChild(nameSpan);
@@ -452,205 +532,128 @@
             });
         }
 
-        // Connect to Room
+        // UI transition once the call reaches 'connected'
+        function onConnected() {
+            updateStatus('connected', `Connected to: ${currentDestination}`);
+            disconnectBtn.disabled = false;
+            toggleAudioBtn.disabled = false;
+            toggleVideoBtn.disabled = false;
+        }
+
+        // Connect to Room (v4)
         async function connect() {
             try {
                 updateStatus('connecting', 'Connecting...');
                 connectBtn.disabled = true;
 
-                // Check what's available on SignalWire
-                console.log('SignalWire object:', window.SignalWire);
-                console.log('SignalWire properties:', Object.keys(window.SignalWire));
-                console.log('SignalWire.SignalWire type:', typeof window.SignalWire.SignalWire);
-                console.log('SignalWire.Fabric type:', typeof window.SignalWire.Fabric);
-                
-                // The CDN version exports SignalWire.SignalWire as the constructor function
-                if (!window.SignalWire || typeof window.SignalWire.SignalWire !== 'function') {
-                    throw new Error('SignalWire.SignalWire constructor not found. Check that the SDK loaded properly.');
+                // Reset per-connection state
+                teardownDone = false;
+                subscriptions = [];
+                currentLocalStream = null;
+                remoteVideoEl = null;
+                lastRemoteSig = '';
+
+                const tokenData = await fetchGuestToken();
+                currentDestination = tokenData.address;
+
+                const SW = window.SignalWire;
+                if (!SW || typeof SW.SignalWire !== 'function') {
+                    throw new Error('SignalWire v4 SDK not loaded');
                 }
-                
-                // Create client using SignalWire.SignalWire constructor
-                client = await window.SignalWire.SignalWire({
-                    token: STATIC_TOKEN,
-                    logLevel: 'debug'
-                });
 
-                console.log('Client created:', client);
-                
-                // Setup client-level user event handler
-                client.on('user_event', (params) => {
-                    console.log('🌮 CLIENT EVENT: user_event', params);
-                    handleUserEvent(params);
-                });
+                // v4: constructor auto-connects; guest SAT via StaticCredentialProvider
+                client = new SW.SignalWire(new SW.StaticCredentialProvider({ token: tokenData.token }));
 
-                // Get the remote video container
-                const remoteVideoContainer = document.getElementById('remoteVideoWrapper');
-                
-                // Dial into the room with video negotiation
-                roomSession = await client.dial({
-                    to: DESTINATION,
-                    rootElement: remoteVideoContainer,
+                track(client.errors$.subscribe(e => console.error('SDK error:', e && e.code, e && e.message)));
+                track(client.warnings$.subscribe(w => console.warn('SDK warning:', w && w.code, w && w.message)));
+
+                await waitForConnected(client, 15000);
+
+                // Two-way room: send + receive audio and video
+                call = await client.dial(currentDestination, {
                     audio: true,
                     video: true,
-                    negotiateVideo: true,  // Important for video negotiation
+                    receiveAudio: true,
+                    receiveVideo: true,
                     userVariables: {
                         userName: `User-${Math.floor(Math.random() * 1000)}`,
-                        interface: 'simple-client',
-                        timestamp: new Date().toISOString()
+                        interface: 'simple-client-v4'
                     }
                 });
 
-                console.log('Room session created:', roomSession);
+                console.log('Call created:', call);
 
-                // Setup event handlers
-                roomSession.on('room.started', (params) => {
-                    console.log('Room started:', params);
-                });
+                track(call.remoteStream$.subscribe(stream => attachRemoteStream(stream)));
+                track(call.localStream$.subscribe(stream => attachLocalStream(stream)));
 
-                roomSession.on('call.joined', async (params) => {
-                    console.log('Call joined:', params);
-                    updateStatus('connected', `Connected to: ${DESTINATION}`);
-                    
-                    disconnectBtn.disabled = false;
-                    toggleAudioBtn.disabled = false;
-                    toggleVideoBtn.disabled = false;
-                    
-                    // Get local stream and display it
-                    if (roomSession.localStream) {
-                        localVideo.srcObject = roomSession.localStream;
-                        console.log('Local stream set:', roomSession.localStream);
-                        
-                        // Log video tracks
-                        const videoTracks = roomSession.localStream.getVideoTracks();
-                        videoTracks.forEach(track => {
-                            console.log('Local video track:', track.label, track.enabled);
-                        });
-                    }
-                    
-                    // Check if SignalWire added video elements to the container
-                    setTimeout(() => {
-                        const remoteVideoContainer = document.getElementById('remoteVideoWrapper');
-                        const videos = remoteVideoContainer.querySelectorAll('video');
-                        console.log('Video elements in container:', videos.length);
-                        videos.forEach((video, index) => {
-                            console.log(`Video ${index}:`, video, 'Has stream:', !!video.srcObject);
-                            if (video.srcObject) {
-                                console.log('Remote stream tracks:', video.srcObject.getTracks());
-                            }
-                        });
-                    }, 1000);
-                });
+                // Room members (if the SDK exposes them)
+                if (call.participants$ && typeof call.participants$.subscribe === 'function') {
+                    track(call.participants$.subscribe(p => {
+                        try { updateMembersList(p); } catch (e) { /* tolerate shape changes */ }
+                    }));
+                }
 
-                roomSession.on('call.state', (params) => {
-                    console.log('Call state:', params);
-                    if (params && (params.state === 'ended' || params.state === 'hangup' || params.state === 'disconnected')) {
-                        updateStatus('disconnected', 'Call ended');
-                        handleDisconnect();
-                    }
-                });
-
-                roomSession.on('stream.started', (params) => {
-                    console.log('Stream started:', params);
-                    // SignalWire should handle this automatically with rootElement
-                });
-
-                roomSession.on('stream.ended', (params) => {
-                    console.log('Stream ended:', params);
-                });
-
-                roomSession.on('room.left', (params) => {
-                    console.log('Room left:', params);
-                    updateStatus('disconnected', 'Left room');
-                    handleDisconnect();
-                });
-                
-                // Additional events for remote hangup detection
-                roomSession.on('call.ended', (params) => {
-                    console.log('Call ended:', params);
-                    handleDisconnect();
-                });
-                
-                roomSession.on('room.ended', (params) => {
-                    console.log('Room ended:', params);
-                    handleDisconnect();
-                });
-                
-                roomSession.on('destroy', (params) => {
-                    console.log('Session destroyed:', params);
-                    handleDisconnect();
-                });
-                
-                roomSession.on('disconnected', (params) => {
-                    console.log('Disconnected:', params);
-                    handleDisconnect();
-                });
-
-                roomSession.on('member.joined', (params) => {
-                    console.log('Member joined:', params);
-                    updateMembersList([params.member]);
-                });
-
-                roomSession.on('member.left', (params) => {
-                    console.log('Member left:', params);
-                });
-
-                roomSession.on('member.updated', (params) => {
-                    console.log('Member updated:', params);
-                });
-                
-                // Room-level user event handler
-                roomSession.on('user_event', (params) => {
-                    console.log('🌶️ ROOM EVENT: user_event', params);
+                track(call.subscribe('user_event').subscribe(evt => {
+                    const params = (evt && evt.params) ? evt.params : evt;
                     handleUserEvent(params);
-                });
+                }));
 
-                // Start the call
-                await roomSession.start();
-                console.log('Call started');
+                track(call.status$.subscribe({
+                    next: (status) => {
+                        console.log('call.status:', status);
+                        if (status === 'connected') {
+                            onConnected();
+                        } else if (status === 'disconnected' || status === 'failed' || status === 'destroyed') {
+                            updateStatus('disconnected', 'Call ended');
+                            handleDisconnect();
+                        }
+                    },
+                    complete: () => handleDisconnect()
+                }));
 
             } catch (error) {
                 console.error('Connection error:', error);
                 updateStatus('disconnected', `Error: ${error.message}`);
-                resetUI();
+                handleDisconnect();
             }
         }
 
-        // Handle disconnection and cleanup
+        // Handle disconnection and cleanup (deduped; unsubscribes all)
         function handleDisconnect() {
-            // Clean up local video
+            if (teardownDone) return;
+            teardownDone = true;
+
+            subscriptions.forEach(s => { try { s.unsubscribe(); } catch (e) {} });
+            subscriptions = [];
+
+            // Detach local video (tracks owned by the call)
             if (localVideo.srcObject) {
-                localVideo.srcObject.getTracks().forEach(track => track.stop());
                 localVideo.srcObject = null;
             }
-            
-            // Clear any video elements SignalWire may have added and restore label
+
+            // Clear the remote video element and restore the label
             const remoteVideoContainer = document.getElementById('remoteVideoWrapper');
             if (remoteVideoContainer) {
-                const videos = remoteVideoContainer.querySelectorAll('video');
-                videos.forEach(video => {
-                    if (video.srcObject) {
-                        video.srcObject.getTracks().forEach(track => track.stop());
-                        video.srcObject = null;
-                    }
+                remoteVideoContainer.querySelectorAll('video').forEach(video => {
+                    video.srcObject = null;
+                    video.remove();
                 });
-                // Restore the original content with the label
                 remoteVideoContainer.innerHTML = `
                     <div class="video-label">Remote Video</div>
-                    <!-- SignalWire will inject video element here -->
+                    <!-- remote video element is injected here -->
                 `;
             }
-            
-            // Clean up client and session
+
+            // Clean up client and call
             if (client) {
-                try {
-                    client.disconnect();
-                } catch (e) {
-                    console.log('Client disconnect error:', e);
-                }
+                try { client.disconnect(); } catch (e) { console.log('Client disconnect error:', e); }
                 client = null;
             }
-            roomSession = null;
-            
+            call = null;
+            currentLocalStream = null;
+            remoteVideoEl = null;
+            lastRemoteSig = '';
+
             updateStatus('disconnected', 'Disconnected');
             resetUI();
             logEvent('Session disconnected', null);
@@ -659,61 +662,67 @@
         // Disconnect from Call (user initiated)
         async function disconnect() {
             try {
-                if (roomSession) {
-                    await roomSession.hangup();
+                if (call) {
+                    await call.hangup();
                 }
-                handleDisconnect();
             } catch (error) {
                 console.error('Disconnect error:', error);
-                handleDisconnect(); // Force cleanup even if hangup fails
             }
+            handleDisconnect();
         }
 
-        // Toggle Audio
+        // Toggle Audio — v4 server-side self.mute()/unmute() with local fallback
         async function toggleAudio() {
+            if (!call) return;
+            const wantMuted = audioEnabled; // if currently enabled, we want to mute
+            let ok = false;
             try {
-                if (roomSession && roomSession.localStream) {
-                    const audioTracks = roomSession.localStream.getAudioTracks();
-                    
-                    audioTracks.forEach(track => {
-                        track.enabled = !track.enabled;
-                        audioEnabled = track.enabled;
-                    });
-                    
-                    if (audioEnabled) {
-                        toggleAudioBtn.textContent = 'Mute Audio';
-                        toggleAudioBtn.className = 'btn-secondary';
-                    } else {
-                        toggleAudioBtn.textContent = 'Unmute Audio';
-                        toggleAudioBtn.className = 'btn-success';
-                    }
-                    console.log('Audio toggled:', audioEnabled);
+                if (wantMuted) {
+                    await call.self.mute();
+                } else {
+                    await call.self.unmute();
                 }
-            } catch (error) {
-                console.error('Audio toggle error:', error);
+                ok = true;
+            } catch (e) {
+                console.warn('Server mute failed, using local fallback:', e.message);
             }
+            if (!ok) {
+                const tracks = currentLocalStream ? currentLocalStream.getAudioTracks() : [];
+                tracks.forEach(t => { t.enabled = !wantMuted; });
+            }
+            audioEnabled = !wantMuted;
+
+            if (audioEnabled) {
+                toggleAudioBtn.textContent = 'Mute Audio';
+                toggleAudioBtn.className = 'btn-secondary';
+            } else {
+                toggleAudioBtn.textContent = 'Unmute Audio';
+                toggleAudioBtn.className = 'btn-success';
+            }
+            console.log('Audio enabled:', audioEnabled);
         }
 
-        // Toggle Video
+        // Toggle Video — toggle the local video track directly
         async function toggleVideo() {
             try {
-                if (roomSession && roomSession.localStream) {
-                    const videoTracks = roomSession.localStream.getVideoTracks();
-                    
-                    videoTracks.forEach(track => {
-                        track.enabled = !track.enabled;
-                        videoEnabled = track.enabled;
-                    });
-                    
-                    if (videoEnabled) {
-                        toggleVideoBtn.textContent = 'Disable Video';
-                        toggleVideoBtn.className = 'btn-secondary';
-                    } else {
-                        toggleVideoBtn.textContent = 'Enable Video';
-                        toggleVideoBtn.className = 'btn-success';
-                    }
-                    console.log('Video toggled:', videoEnabled);
+                const tracks = currentLocalStream ? currentLocalStream.getVideoTracks() : [];
+                if (!tracks.length) {
+                    console.warn('No local video track to toggle');
+                    return;
                 }
+                tracks.forEach(track => {
+                    track.enabled = !track.enabled;
+                    videoEnabled = track.enabled;
+                });
+
+                if (videoEnabled) {
+                    toggleVideoBtn.textContent = 'Disable Video';
+                    toggleVideoBtn.className = 'btn-secondary';
+                } else {
+                    toggleVideoBtn.textContent = 'Enable Video';
+                    toggleVideoBtn.className = 'btn-success';
+                }
+                console.log('Video enabled:', videoEnabled);
             } catch (error) {
                 console.error('Video toggle error:', error);
             }
@@ -744,7 +753,7 @@
 
         // Handle page unload
         window.addEventListener('beforeunload', () => {
-            if (roomSession) {
+            if (call) {
                 disconnect();
             }
         });
