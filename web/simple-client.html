@@ -315,7 +315,9 @@
         </div>
     </div>
 
-    <script type="text/javascript" src="https://cdn.signalwire.com/@signalwire/js@4.0.0-rc.0"></script>
+    <!-- Keep this pin in step with web/index.html; the nightly maintenance
+         drift check compares both against the @signalwire/js `rc` dist-tag. -->
+    <script type="text/javascript" src="https://cdn.signalwire.com/@signalwire/js@4.0.0-rc.5"></script>
     <script type="text/javascript">
         // Token + destination are fetched dynamically from /get_token so this
         // client works against whatever agent the server has registered.
