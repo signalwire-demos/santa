@@ -285,14 +285,12 @@
             <button id="connectBtn" class="btn-primary">Connect</button>
             <button id="disconnectBtn" class="btn-danger" disabled>Disconnect</button>
             <button id="toggleAudioBtn" class="btn-secondary" disabled>Mute Audio</button>
-            <button id="toggleVideoBtn" class="btn-secondary" disabled>Disable Video</button>
+            <button id="toggleVideoBtn" class="btn-secondary" disabled title="This demo is microphone only">Camera off</button>
         </div>
 
         <div class="video-container">
-            <div class="video-wrapper">
-                <div class="video-label">Local Video</div>
-                <video id="localVideo" autoplay muted playsinline></video>
-            </div>
+            <!-- The "Local Video" panel is gone with the camera: there is
+                 no local video track to show. -->
             <div class="video-wrapper" id="remoteVideoWrapper">
                 <div class="video-label">Remote Video</div>
                 <!-- remote video element is injected here -->
@@ -340,7 +338,10 @@
         const disconnectBtn = document.getElementById('disconnectBtn');
         const toggleAudioBtn = document.getElementById('toggleAudioBtn');
         const toggleVideoBtn = document.getElementById('toggleVideoBtn');
-        const localVideo = document.getElementById('localVideo');
+        // No localVideo element any more -- the camera is never requested,
+        // so there is no local track to preview. Every reference to it is
+        // guarded below rather than removed outright, because the SDK still
+        // emits local-stream events for the audio track.
         const membersList = document.getElementById('membersList');
         const membersContainer = document.getElementById('membersContainer');
         const eventsContainer = document.getElementById('eventsContainer');
@@ -397,12 +398,11 @@
             });
         }
 
-        // Local self-preview (element is muted in markup to avoid feedback)
+        // The local stream is audio-only now, so there is nothing to show.
+        // The handler stays because the SDK still fires it for the mic
+        // track, and dropping it would break mute/unmute bookkeeping.
         function attachLocalStream(stream) {
             currentLocalStream = stream || null;
-            if (localVideo.srcObject !== stream) {
-                localVideo.srcObject = stream || null;
-            }
         }
 
         // Render the remote stream into #remoteVideoWrapper. Leave it unmuted
@@ -537,7 +537,7 @@
             updateStatus('connected', `Connected to: ${currentDestination}`);
             disconnectBtn.disabled = false;
             toggleAudioBtn.disabled = false;
-            toggleVideoBtn.disabled = false;
+            // toggleVideoBtn stays disabled: mic-only, no video track to toggle.
         }
 
         // Connect to Room (v4)
@@ -569,10 +569,22 @@
 
                 await waitForConnected(client, 15000);
 
-                // Two-way room: send + receive audio and video
+                // MICROPHONE ONLY -- never the camera.
+                //
+                // This page used to dial with `video: true`, which turns on
+                // the caller's webcam and rendered it back in a "Local
+                // Video" panel. It is served publicly alongside the main
+                // page (GET /simple-client.html returns 200 on the live
+                // demo), so anyone who reached it was asked for camera
+                // permission by a site built for children talking to Santa.
+                //
+                // Santa has no vision: nothing in the agent consumes a video
+                // track. receiveVideo stays on for his avatar; the send side
+                // is off, which also means the browser never shows a camera
+                // prompt at all.
                 call = await client.dial(currentDestination, {
                     audio: true,
-                    video: true,
+                    video: false,
                     receiveAudio: true,
                     receiveVideo: true,
                     userVariables: {
@@ -625,11 +637,6 @@
 
             subscriptions.forEach(s => { try { s.unsubscribe(); } catch (e) {} });
             subscriptions = [];
-
-            // Detach local video (tracks owned by the call)
-            if (localVideo.srcObject) {
-                localVideo.srcObject = null;
-            }
 
             // Clear the remote video element and restore the label
             const remoteVideoContainer = document.getElementById('remoteVideoWrapper');

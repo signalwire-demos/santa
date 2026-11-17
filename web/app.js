@@ -34,6 +34,7 @@ let giftState = {
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     initializeUI();
+    initializeAgeGate();
     initializeSettings();
     createChristmasLights();
     startSnowfall();
@@ -52,9 +53,95 @@ function initializeUI() {
     const endBtn = document.getElementById('endBtn');
     const muteBtn = document.getElementById('muteBtn');
 
-    startBtn.addEventListener('click', startCall);
+    // The microphone is never opened until the visitor has answered the age
+    // question. startCall is reached through the gate, not directly.
+    startBtn.addEventListener('click', requestCallWithConsent);
     endBtn.addEventListener('click', endCall);
     muteBtn.addEventListener('click', toggleMute);
+}
+
+// -- Age / parental-consent gate -------------------------------------------
+//
+// COPPA turns on collecting personal information from a child under 13.
+// This demo collects a child's voice, whatever name they say out loud, and
+// the gift they pick -- so the question has to be asked BEFORE the
+// microphone opens, which is the first moment anything is collected.
+//
+// WHAT THIS IS NOT: an age screen is not verifiable parental consent, and
+// it does not by itself make a child-directed service compliant. It is the
+// notice-and-acknowledgement step. See COPPA.md for what else this demo
+// needs, and for the one setting that matters most (call recording).
+//
+// The answer is kept in sessionStorage, not localStorage: consent should be
+// given by whoever is actually at the machine this visit, not inherited
+// from whoever used the browser last month.
+
+const CONSENT_KEY = 'santa.ageConsent';
+
+function hasConsent() {
+    try {
+        return sessionStorage.getItem(CONSENT_KEY) !== null;
+    } catch (e) {
+        // Storage can throw in private mode or a partitioned context. Fail
+        // CLOSED: no record of consent means we ask again, which is the
+        // harmless direction to be wrong in.
+        return false;
+    }
+}
+
+function recordConsent(kind) {
+    try {
+        sessionStorage.setItem(CONSENT_KEY, kind);
+    } catch (e) {
+        // Not fatal: the gate simply reappears next time.
+    }
+}
+
+function closeAgeGate() {
+    const gate = document.getElementById('ageGate');
+    if (gate) gate.hidden = true;
+}
+
+function requestCallWithConsent() {
+    if (hasConsent()) {
+        startCall();
+        return;
+    }
+
+    const gate = document.getElementById('ageGate');
+    if (!gate) {
+        // The gate markup is missing. Do NOT silently fall through to the
+        // microphone -- that is exactly the failure this guards against.
+        console.error('Age gate markup not found; refusing to start the call.');
+        alert('This demo cannot start right now. Please reload the page.');
+        return;
+    }
+
+    gate.hidden = false;
+    const first = document.getElementById('ageGate13');
+    if (first) first.focus();
+}
+
+function initializeAgeGate() {
+    const proceed = (kind) => {
+        recordConsent(kind);
+        closeAgeGate();
+        startCall();
+    };
+
+    const over13 = document.getElementById('ageGate13');
+    const parent = document.getElementById('ageGateParent');
+    const decline = document.getElementById('ageGateNo');
+
+    if (over13) over13.addEventListener('click', () => proceed('self-13-plus'));
+    if (parent) parent.addEventListener('click', () => proceed('parent-present'));
+    if (decline) decline.addEventListener('click', closeAgeGate);
+
+    // Escape closes it. A dialog a child cannot back out of is its own
+    // problem.
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeAgeGate();
+    });
 }
 
 // Initialize audio settings
@@ -585,8 +672,30 @@ function createGiftCard(gift, optionNumber) {
 // Select a gift
 function selectGift(optionNumber) {
     console.log('Selecting gift option:', optionNumber);
-    // The actual selection will be handled by voice command
-    // This is just visual feedback
+
+    // Tell Santa what was clicked.
+    //
+    // This used to be cosmetic -- the comment here said "the actual
+    // selection will be handled by voice command", so clicking a card
+    // highlighted it and told the agent nothing. You picked a gift on
+    // screen and then still had to say "option one" out loud, which makes
+    // the cards look broken.
+    //
+    // DTMF is the channel that exists. The AI leg receives digits as user
+    // input, so sending "1" reaches the model the same way saying "one"
+    // does, and it calls select_gift itself. No backend change needed, and
+    // nothing to keep in sync between the click and the prompt.
+    //
+    // Fire-and-forget on purpose: if the digit fails to send, the child can
+    // still say the number, and an error dialog over Santa helps nobody.
+    if (call && typeof call.sendDigits === 'function') {
+        Promise.resolve(call.sendDigits(String(optionNumber)))
+            .then(() => console.log('Sent DTMF for option', optionNumber))
+            .catch(e => console.warn('Could not send the selection as DTMF:', e && e.message));
+    } else {
+        console.warn('No active call; the selection was not sent to Santa.');
+    }
+
     const cards = document.querySelectorAll('.gift-card');
     cards.forEach((card, index) => {
         if (index === optionNumber - 1) {
