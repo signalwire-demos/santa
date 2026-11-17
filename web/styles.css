@@ -1171,3 +1171,12 @@ body {
 }
 
 .age-gate-fine a { color: #8ec9ff; }
+
+/* The recording disclosure. Same size as the body copy, not shrunk into
+   fine print -- it is the most significant thing collected here. */
+.age-gate-record {
+    background: rgba(255, 215, 0, 0.12);
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+}

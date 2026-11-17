@@ -16,6 +16,12 @@ is at the machine this visit rather than inherited from last month's user.
 **A privacy notice** at `/privacy.html`, in plain language, listing what is
 collected, what is not, and an address for a parent to request deletion.
 
+**The recording is disclosed** on the consent screen and in the notice. The
+first version of both omitted it entirely -- the notice said the audio was
+"carried over the SignalWire network", which reads as transport, not
+retention. That was the single most significant thing being collected and it
+was the one thing the privacy notice did not mention.
+
 **Microphone only, verified.** The main page dials with `video: false`. This
 was checked at the API level, not by reading the source: `getUserMedia` is
 called exactly once per session with `{"audio":{},"video":false}`.
@@ -46,18 +52,18 @@ to child-directed.
 So the screen is a notice-and-acknowledgement step and a good-faith signal.
 It is not, by itself, compliance.
 
-**The biggest single exposure is call recording.** `app.py` sets
-`record_call=True`, which retains a recording of a child's voice. The FTC's
-audio-recording exception is narrow: it covers audio used *solely* as a
-replacement for text input and deleted immediately after. A retained call
-recording is outside it.
+**Call recording is off.** `app.py` sets `record_call=False`. This was the
+largest exposure here: a retained recording of a child's voice sits outside
+the FTC's narrow audio exception, which covers only audio used *solely* as a
+replacement for text input and deleted immediately after.
 
-The one-line change that most reduces risk:
+Misuse is reviewed from the written summary instead. That is better for the
+purpose as well as for privacy -- text can be counted and alerted on, and
+nobody was ever going to listen to every call.
 
-```python
-# app.py
-record_call=False
-```
+The consent screen and the privacy notice both state that the call is not
+recorded. If recording is ever switched back on, those two documents change
+first, and verifiable parental consent becomes a hard requirement.
 
 **Other open items**, in rough order of weight:
 
