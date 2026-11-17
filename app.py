@@ -655,8 +655,8 @@ class SantaAIAgent(AgentBase):
         # origin 441,611 bytes, edge 6,321,501 bytes, age 4610.
         ASSET_V = "2"
         if base_url:
-            self.set_param("video_idle_file", f"{base_url}/santa_idle.mp4")
-            self.set_param("video_talking_file", f"{base_url}/santa_talking.mp4")
+            self.set_param("video_idle_file", f"{base_url}/santa_idle.mp4?v={ASSET_V}")
+            self.set_param("video_talking_file", f"{base_url}/santa_talking.mp4?v={ASSET_V}")
             # Add background music for festive atmosphere
             self.set_param("background_file", f"{base_url}/background.mp3")
             self.set_param("background_file_volume", -10)
