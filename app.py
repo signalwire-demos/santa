@@ -1012,14 +1012,10 @@ def create_server():
             print(f"Token request failed: {e}")
             return JSONResponse({"error": str(e)}, status_code=500)
 
-    # Add /get_credentials endpoint for curl examples
-    @server.app.get('/get_credentials')
-    def get_credentials():
-        """Get basic auth credentials for the web UI."""
-        return {
-            "user": os.getenv("SWML_BASIC_AUTH_USER", ""),
-            "password": os.getenv("SWML_BASIC_AUTH_PASSWORD", "")
-        }
+    # There is deliberately no endpoint that returns SWML_BASIC_AUTH_PASSWORD.
+    # One used to live here, unauthenticated, "for curl examples" -- so the
+    # credential protecting POST /santa was readable by anyone who asked for
+    # it. Read the password from the deployment's own environment instead.
 
     # Add /get_resource_info endpoint for dashboard links
     @server.app.get('/get_resource_info')

@@ -23,6 +23,9 @@
       "description": "Basic auth password for SWML endpoints",
       "required": true
     },
+    "SIGNALWIRE_SIGNING_KEY": {
+      "description": "Signing Key (PSK_...) from the SignalWire dashboard. When set, inbound webhook signatures are verified and unsigned requests are rejected with 403. Recommended for public deployments."
+    },
     "RAPIDAPI_KEY": {
       "description": "RapidAPI key for Amazon product search",
       "required": true
