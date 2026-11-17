@@ -1,4 +1,7 @@
-signalwire-sdk>=3.0.2
+# 3.5.0 is a security floor, not a preference: before it, serve() registered
+# its catch-all route ahead of the agent's router, so an unsigned POST reached
+# the SWML/SWAIG/post-prompt handlers even with a signing key set.
+signalwire-sdk>=3.5.0
 fastapi>=0.115.12
 uvicorn>=0.34.2
 gunicorn>=23.0.0
