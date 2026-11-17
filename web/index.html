@@ -257,5 +257,35 @@
 
     <!-- Custom JavaScript -->
     <script src="app.js"></script>
+
+    <!-- Age / parental-consent gate.
+         Shown before the microphone is ever requested. See web/app.js:
+         the start button opens this instead of dialling. -->
+    <div id="ageGate" class="age-gate" hidden>
+      <div class="age-gate-panel" role="dialog" aria-modal="true"
+           aria-labelledby="ageGateTitle" aria-describedby="ageGateBody">
+        <h2 id="ageGateTitle">Before you talk to Santa</h2>
+        <div id="ageGateBody">
+          <p>This is a demo of an AI voice agent. When you start, your
+          <strong>microphone</strong> turns on and Santa can hear what you say —
+          including your name and the gift you pick. <strong>No camera is
+          used.</strong></p>
+          <p class="age-gate-ask">Who is about to talk to Santa?</p>
+        </div>
+        <div class="age-gate-actions">
+          <button id="ageGate13" class="btn-santa-primary">
+            I'm 13 or older
+          </button>
+          <button id="ageGateParent" class="btn-santa-secondary">
+            I'm under 13 and a parent or guardian is here and says yes
+          </button>
+          <button id="ageGateNo" class="age-gate-decline">Not right now</button>
+        </div>
+        <p class="age-gate-fine">
+          A grown-up should be with any child using this.
+          <a href="/privacy.html" target="_blank" rel="noopener">What we collect</a>
+        </p>
+      </div>
+    </div>
 </body>
 </html>

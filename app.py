@@ -78,11 +78,40 @@ class SantaAIAgent(AgentBase):
             """Follow these conversation states:
 
             1. GREETING: Welcome the child warmly, ask their name, and find out what they'd like for Christmas
-            2. COLLECTING_WISHES: Listen to what gifts they're interested in, ask clarifying questions if needed
+            2. COLLECTING_WISHES: Search as soon as you have ANYTHING searchable.
+               "a pony", "lego", "a bike" are all enough -- call search_gifts
+               immediately with the child's own words.
+
+               Do NOT ask follow-up questions to refine a search that would
+               already have worked. No colour, no brand, no budget, no size,
+               no age. A child who has said what they want has finished
+               their turn, and asking them to qualify it reads as Santa not
+               listening.
+
+               Ask ONE short question only if what they said cannot be
+               searched at all (for example just "a present"), then search.
             3. SEARCHING_GIFTS: Let them know you're checking your workshop and Amazon's catalog
             4. PRESENTING_OPTIONS: Present up to 3 gift options enthusiastically
             5. CONFIRMING_SELECTION: Help them choose ONE gift (gently explain they can only pick one)
-            6. SENDING_GIFT: Confirm you'll send the gift details to their parents
+            6. SHOWING_RESULT: The chosen gift appears on the screen in front of
+               them. Tell them it is there and that a grown-up can look at it
+               with them.
+
+            NEVER ASK FOR CONTACT DETAILS. This is absolute.
+
+            Do not ask for a phone number, an email address, a home address,
+            a last name, or a parent's details -- not even if the child
+            offers them, and not to "send" anything anywhere.
+
+            You have no way to send a message. There is no such function.
+            An earlier version of this script said to confirm you would send
+            the gift to their parents, and you improvised by asking a child
+            to read out a parent's phone number -- collecting personal
+            information you could not use, from someone who may be under 13.
+
+            If a child asks you to send it somewhere, say warmly that their
+            gift is already on the screen and a grown-up can look at it with
+            them right now. Then carry on.
 
             Always maintain the magic of Christmas and never break character."""
         )
@@ -151,12 +180,6 @@ class SantaAIAgent(AgentBase):
                     "query": {
                         "type": "string",
                         "description": "What to search for (e.g., 'lego sets', 'dolls', 'video games for kids')"
-                    },
-                    "child_age": {
-                        "type": "integer",
-                        "description": "Approximate age of the child (optional)",
-                        "minimum": 3,
-                        "maximum": 16
                     }
                 },
                 "required": ["query"]
@@ -165,7 +188,6 @@ class SantaAIAgent(AgentBase):
         def search_gifts(args, raw_data):
             """Search Amazon for gift ideas using RapidAPI"""
             query = args.get('query')
-            child_age = args.get('child_age')
 
             # Send searching event immediately to reset UI
             early_result = SwaigFunctionResult("")
@@ -181,7 +203,7 @@ class SantaAIAgent(AgentBase):
             # The user will specify if they want kids items
 
             # Debug the search
-            print(f"DEBUG SWAIG: search_gifts called with query='{query}', age={child_age}")
+            print(f"DEBUG SWAIG: search_gifts called with query='{query}'")
 
             # Call RapidAPI
             products = self._search_amazon_products(query)
@@ -242,7 +264,7 @@ class SantaAIAgent(AgentBase):
                 response_text += "\n"
 
             response_text += "I can see all these wonderful gifts on my magical display here at the North Pole! "
-            response_text += "Which one would you like? Just tell me the number - option 1, 2, 3, or 4!"
+            response_text += "Which one would you like? Just tell me the number - option 1, 2, or 3!"
 
             print(f"DEBUG SWAIG: Found {len(gift_data)} gifts, sending to frontend")
             print(f"DEBUG SWAIG: Gift data being sent: {[g['title'] for g in gift_data]}")
@@ -289,7 +311,7 @@ class SantaAIAgent(AgentBase):
                 "properties": {
                     "gift_choice": {
                         "type": "integer",
-                        "description": "The option number (1, 2, 3, or 4)",
+                        "description": "The option number (1, 2, or 3)",
                         "minimum": 1,
                         "maximum": 4
                     }
@@ -613,6 +635,25 @@ class SantaAIAgent(AgentBase):
         base_url = self.get_full_url(include_auth=False)
 
         # Set video URLs using set_param (this is what makes video work!)
+        #
+        # These are fetched by SIGNALWIRE'S MEDIA SERVER, not by the browser,
+        # to build Santa's avatar track. That makes their delivery time the
+        # delay before any video appears after the call connects -- and it
+        # goes over the same public URL as everything else, so through
+        # Cloudflare.
+        #
+        # They were 1936x1080 at 7-10 Mbit/s with the moov atom at the END of
+        # the file, over a tunnel that delivers ~1.1 Mbit/s: a 45 second fetch
+        # on a cold cache before a single frame could play. They are now
+        # 960x540, faststart, ~440 KB.
+        #
+        # ASSET_V is a cache buster and must be bumped whenever these files
+        # are re-encoded. Cloudflare keeps them for max-age=14400 (4 hours)
+        # and the query string is part of its cache key, so without a bump
+        # the edge happily serves the old six-megabyte copy to SignalWire
+        # long after the origin has the new one. Measured doing exactly that:
+        # origin 441,611 bytes, edge 6,321,501 bytes, age 4610.
+        ASSET_V = "2"
         if base_url:
             self.set_param("video_idle_file", f"{base_url}/santa_idle.mp4")
             self.set_param("video_talking_file", f"{base_url}/santa_talking.mp4")
